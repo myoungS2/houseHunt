@@ -1,5 +1,5 @@
 /**
- * 집 고르기 장부 — Cloudflare Worker
+ * 하우스헌팅 — Cloudflare Worker
  *
  *  1. 이메일과 비밀번호로 회원가입, 로그인 (가입 코드를 아는 사람만)
  *  2. 사람별로 완전히 분리된 매물 API (D1)
@@ -385,9 +385,9 @@ function safeNext(next) {
 function authPage(kind, email, next) {
   const nonce = b64(crypto.getRandomValues(new Uint8Array(16)));
   const T = {
-    login:    { title: '집 고르기 장부', lead: '로그인', btn: '로그인', path: '/auth/login' },
-    signup:   { title: '집 고르기 장부', lead: '회원가입', btn: '가입하고 시작하기', path: '/auth/signup' },
-    password: { title: '집 고르기 장부', lead: '비밀번호 변경', btn: '비밀번호 바꾸기', path: '/auth/password' }
+    login:    { title: '하우스헌팅', lead: '로그인', btn: '로그인', path: '/auth/login' },
+    signup:   { title: '하우스헌팅', lead: '회원가입', btn: '가입하고 시작하기', path: '/auth/signup' },
+    password: { title: '하우스헌팅', lead: '비밀번호 변경', btn: '비밀번호 바꾸기', path: '/auth/password' }
   }[kind];
 
   const fields =
@@ -416,7 +416,7 @@ function authPage(kind, email, next) {
 
   const html = '<!doctype html><html lang="ko"><head><meta charset="utf-8">' +
     '<meta name="viewport" content="width=device-width,initial-scale=1">' +
-    '<meta name="color-scheme" content="light dark"><title>' + T.lead + ' · 집 고르기 장부</title>' +
+    '<meta name="color-scheme" content="light dark"><title>' + T.lead + ' · 하우스헌팅</title>' +
     '<link rel="preconnect" href="https://fonts.googleapis.com">' +
     '<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>' +
     '<link href="https://fonts.googleapis.com/css2?family=Jua&family=IBM+Plex+Sans+KR:wght@400;500;600&display=swap" rel="stylesheet">' +
@@ -605,7 +605,7 @@ function joinPage(error, bookName) {
       '<a class="go" href="/">장부 열기</a>';
   const html = '<!doctype html><html lang="ko"><head><meta charset="utf-8">' +
     '<meta name="viewport" content="width=device-width,initial-scale=1">' +
-    '<meta name="color-scheme" content="light dark"><title>초대 · 집 고르기 장부</title>' +
+    '<meta name="color-scheme" content="light dark"><title>초대 · 하우스헌팅</title>' +
     '<link rel="preconnect" href="https://fonts.googleapis.com">' +
     '<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>' +
     '<link href="https://fonts.googleapis.com/css2?family=Jua&family=IBM+Plex+Sans+KR:wght@400;500;600&display=swap" rel="stylesheet">' +
