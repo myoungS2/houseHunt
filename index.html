@@ -266,6 +266,17 @@ legend{font-size:11px;letter-spacing:.08em;color:var(--muted);font-weight:700;pa
 .empty .pic svg{width:100%;height:auto;display:block}
 .empty h3{font-family:var(--f-display);font-size:19px;font-weight:400;margin:0 0 7px}
 .empty p{margin:0 0 18px;color:var(--muted);font-size:13.5px}
+.emptyBtns{display:flex;gap:9px;justify-content:center;flex-wrap:wrap}
+.empty.loading{border-style:solid;border-color:var(--line)}
+.dots{display:flex;gap:8px;justify-content:center}
+.dots i{width:9px;height:9px;border-radius:50%;background:var(--sun);opacity:.3;animation:bob 1.15s ease-in-out infinite}
+.dots i:nth-child(2){animation-delay:.14s}
+.dots i:nth-child(3){animation-delay:.28s}
+@keyframes bob{0%,100%{transform:translateY(0);opacity:.3}50%{transform:translateY(-8px);opacity:1}}
+@keyframes hunt{0%,100%{transform:translate(0,0)}30%{transform:translate(24px,-3px)}62%{transform:translate(48px,5px)}}
+.loading .mg{animation:hunt 3.2s ease-in-out infinite}
+body.booting #addBtn,body.booting .storage{visibility:hidden}
+@media (prefers-reduced-motion:reduce){.dots i,.loading .mg{animation:none}}
 .toast{position:fixed;left:50%;bottom:26px;transform:translateX(-50%);background:var(--ink);color:var(--bg);padding:10px 20px;border-radius:999px;font-size:13px;z-index:80;box-shadow:var(--shadow-2);opacity:0;pointer-events:none;transition:opacity .18s}
 .toast.show{opacity:1}
 .lightbox{position:fixed;inset:0;background:rgba(30,22,10,.9);z-index:90;display:none;place-items:center;padding:24px;cursor:zoom-out}
@@ -472,7 +483,7 @@ function score(p,s){
 const LS_P='househunt.props.v1', LS_S='househunt.settings.v1', LS_X='househunt.samplesOff.v1';
 const state = {
   props:{}, settings:JSON.parse(JSON.stringify(DEFAULT_SETTINGS)),
-  view:'table', sort:{key:'score',dir:'desc'}, picks:[], editing:null, draft:null,
+  view:'table', sort:{key:'score',dir:'desc'}, picks:[], editing:null, draft:null, loading:true,
   samplesOff: (function(){ try{return localStorage.getItem(LS_X)==='1';}catch(e){return false;} })(),
   cmpSame:false
 };
@@ -496,6 +507,10 @@ const store = {
   clearLocal(){ try{ localStorage.removeItem(LS_P); localStorage.removeItem(LS_S); }catch(e){} },
 
   async connect(){
+    /* 어떤 이유로든 오래 걸리면 장부를 먼저 보여준다 */
+    const giveUp = setTimeout(()=>{ if(state.loading){ state.loading=false; render(); } }, 2500);
+    const settled = ()=>{ clearTimeout(giveUp); state.loading=false; };
+
     /* 1순위 — 직접 올린 서버(Cloudflare Worker)에 붙는다 */
     try{
       const r=await fetch('/api/me',{credentials:'same-origin',headers:{accept:'application/json'}});
@@ -507,7 +522,7 @@ const store = {
         this.user=await r.json(); this.mode='api'; this.photosOk=!!this.user.photos;
         this.clearLocal(); state.props={};
         try{ await this.pull(); }catch(e){ toast('내 매물을 불러오지 못했습니다'); }
-        paintStorage(); render();
+        settled(); paintStorage(); render();
         window.addEventListener('focus',()=>{
           if(store.mode==='api' && !$('#sheet').classList.contains('open'))
             store.pull().then(render).catch(()=>{});
@@ -517,6 +532,7 @@ const store = {
     }catch(e){ /* 자체 서버가 아니다 — 다음 방법으로 */ }
 
     /* 2순위 — Claude 아티팩트의 저장 기능 */
+    settled(); render();
     let db=null, as=null;
     try{ if(window.claude&&typeof claude.use==='function') db=await claude.use('db'); }catch(e){ db=null; }
     if(db){
@@ -571,7 +587,9 @@ const store = {
 
   /* ── 공통 쓰기 ── */
   async put(p){
-    state.props[p.id]=p; this.saveLocal(); render();
+    state.props[p.id]=p;
+    if(!state.samplesOff){ state.samplesOff=true; try{ localStorage.setItem(LS_X,'1'); }catch(e){} }
+    this.saveLocal(); render();
     const b=Object.assign({},p); delete b._sample;
     if(this.mode==='api'){
       try{ await this.call('PUT','/api/properties/'+encodeURIComponent(p.id), b); }
@@ -641,8 +659,8 @@ const HOUSE_PIC='<svg viewBox="0 0 240 152" fill="none" stroke="var(--ink)" stro
   /* 구름 */
   '<path d="M184 40a9 9 0 0 1 0-18 12 12 0 0 1 22-4 12 12 0 0 1 6 22z" fill="var(--surface)"/>'+
   /* 돋보기 — 집을 찾아다니는 중 */
-  '<path d="M67.5 47.5 78.5 58.5" stroke-width="5.5"/>'+
-  '<circle cx="55" cy="35" r="14.5" fill="var(--surface)"/>'+
+  '<g class="mg"><path d="M67.5 47.5 78.5 58.5" stroke-width="5.5"/>'+
+  '<circle cx="55" cy="35" r="14.5" fill="var(--surface)"/></g>'+
   /* 땅 */
   '<rect x="5" y="126" width="230" height="17" rx="8.5" fill="var(--mint)"/>'+
   /* 왼쪽 나무 */
@@ -698,6 +716,9 @@ function paintStorage(){
 /* ═══ 상단 요약 ══════════════════════════════ */
 function renderChrome(){
   const s=state.settings, list=allProps(), live=list.filter(p=>p.status!=='dropped');
+  if(state.loading || !list.length){ $('#strip').innerHTML=''; $('#notice').innerHTML='';
+    $$('#views button').forEach(b=>b.setAttribute('aria-pressed', String(b.dataset.view===state.view)));
+    return; }
   const months=live.map(p=>monthly(p,s)).filter(v=>v!=null);
   const scored=live.map(p=>({p,v:score(p,s)})).filter(x=>x.v!=null).sort((a,b)=>b.v-a.v);
   const soon=live.map(p=>p.moveIn).filter(Boolean).sort()[0];
@@ -734,8 +755,28 @@ const COLS=[
   {k:'score',     l:'총점',      num:true}
 ];
 
+/* 서버에서 내 매물을 가져오는 동안 */
+function renderLoading(){
+  return '<div class="empty loading" role="status" aria-live="polite">'+
+    '<div class="pic" aria-hidden="true">'+HOUSE_PIC+'</div>'+
+    '<h3>장부를 펼치는 중이에요</h3>'+
+    '<p>적어둔 집들을 불러오고 있습니다.</p>'+
+    '<div class="dots" aria-hidden="true"><i></i><i></i><i></i></div></div>';
+}
+
+/* 매물이 하나도 없을 때 — 표와 카드 화면이 함께 쓴다 */
+function emptyBook(){
+  return '<div class="empty"><div class="pic" aria-hidden="true">'+HOUSE_PIC+'</div>'+
+    '<h3>나의 첫 보금자리는 어디가 될까</h3>'+
+    '<p>마음에 둔 집을 한 곳 적어두면 여기서부터 비교가 시작됩니다.</p>'+
+    '<div class="emptyBtns"><button class="btn primary" data-add="1">첫 집 적어보기</button>'+
+      (state.samplesOff?'<button class="btn" id="showSamples">예시 다시 보기</button>':'')+
+    '</div></div>';
+}
+
 function renderTable(){
   const list=ordered(), manual=state.sort.key==='manual', s=state.settings;
+  if(!list.length) return emptyBook();
   const head=COLS.map(c=>{
     const on=state.sort.key===c.k;
     return '<th class="sortable'+(c.num?' num':'')+'" data-sort="'+c.k+'">'+c.l+
@@ -792,6 +833,7 @@ function toolbar(manual){
 /* ═══ 카드 ══════════════════════════════════ */
 function renderCards(){
   const list=ordered(), s=state.settings;
+  if(!list.length) return emptyBook();
   const cards=list.map((p,i)=>{
     const picked=state.picks.indexOf(p.id)>=0;
     const shots=(p.photos||[]).map(ph=>'<img src="'+photoSrc(ph)+'" alt="'+esc(p.name)+' 사진" data-zoom="'+photoSrc(ph)+'">').join('');
@@ -1024,7 +1066,9 @@ function collectForm(){
 /* ═══ 그리기 ════════════════════════════════ */
 function render(){
   renderChrome();
+  document.body.classList.toggle('booting', !!state.loading);
   const v=$('#view');
+  if(state.loading){ v.innerHTML=renderLoading(); return; }
   if(state.view==='table')        v.innerHTML=renderTable();
   else if(state.view==='cards')   v.innerHTML=renderCards();
   else if(state.view==='compare') v.innerHTML=renderCompare();
@@ -1107,7 +1151,7 @@ function refreshPhotos(){
 
 /* ═══ 이벤트 ════════════════════════════════ */
 document.addEventListener('click', e=>{
-  const t=e.target.closest('[data-view],[data-sort],[data-order],[data-edit],[data-move],[data-zoom],[data-go],[data-star],[data-rweight],[data-rdel],[data-rmphoto],[data-logout],button');
+  const t=e.target.closest('[data-view],[data-sort],[data-order],[data-edit],[data-move],[data-zoom],[data-go],[data-star],[data-rweight],[data-rdel],[data-rmphoto],[data-logout],[data-add],button');
   if(!t) return;
 
   if(t.dataset.view){ setView(t.dataset.view); return; }
@@ -1116,6 +1160,7 @@ document.addEventListener('click', e=>{
   if(t.dataset.order){ state.sort = t.dataset.order==='manual'?{key:'manual',dir:'asc'}:{key:'score',dir:'desc'}; render(); return; }
   if(t.dataset.move){ move(t.dataset.id,t.dataset.move); return; }
   if(t.dataset.edit){ openSheet(t.dataset.edit); return; }
+  if(t.dataset.add){ openSheet(null); return; }
   if(t.dataset.zoom){ $('#lightboxImg').src=t.dataset.zoom; $('#lightbox').classList.add('open'); return; }
   if(t.dataset.logout){
     t.disabled=true;

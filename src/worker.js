@@ -357,8 +357,9 @@ function authPage(kind, email) {
     '<link href="https://fonts.googleapis.com/css2?family=Jua&family=IBM+Plex+Sans+KR:wght@400;500;600&display=swap" rel="stylesheet">' +
     '<style nonce="' + nonce + '">' + AUTH_CSS + '</style></head><body>' +
     '<main class="card">' +
-      '<div class="pic" aria-hidden="true"><svg viewBox="0 0 240 152" fill="none" stroke="var(--ink)" stroke-width="2.6" stroke-linejoin="round" stroke-linecap="round"><path d="M184 40a9 9 0 0 1 0-18 12 12 0 0 1 22-4 12 12 0 0 1 6 22z" fill="var(--surface)"/><path d="M67.5 47.5 78.5 58.5" stroke-width="5.5"/><circle cx="55" cy="35" r="14.5" fill="var(--surface)"/><rect x="5" y="126" width="230" height="17" rx="8.5" fill="var(--mint)"/><path d="M15.5 126v-16"/><circle cx="15.5" cy="103" r="11" fill="var(--leaf)"/><rect x="30" y="96" width="42" height="30" fill="var(--surface)"/><path d="M24 96 51 73l27 23" fill="var(--leaf)"/><rect x="34.5" y="101" width="9.5" height="9.5" rx="1.5" fill="var(--mint)"/><rect x="52" y="110" width="13" height="16" rx="2" fill="var(--sun)"/><path d="M140 74V57h9.5v11" fill="var(--surface)"/><rect x="92" y="82" width="62" height="44" fill="var(--surface)"/><path d="M85 82 123 51l38 31" fill="var(--sun)"/><rect x="98.5" y="90" width="15" height="15" rx="2" fill="var(--mint)"/><path d="M106 90v15M98.5 97.5h15" stroke-width="2"/><rect x="132.5" y="90" width="15" height="15" rx="2" fill="var(--mint)"/><path d="M140 90v15M132.5 97.5h15" stroke-width="2"/><rect x="113" y="104" width="20" height="22" rx="2.5" fill="var(--surface)"/><circle cx="128" cy="116" r="1.9" fill="var(--ink)" stroke="none"/><rect x="174" y="100" width="40" height="26" fill="var(--surface)"/><path d="M168 100 194 79l26 21" fill="var(--mint)"/><rect x="184" y="106" width="11" height="11" rx="1.5" fill="var(--leaf)"/><path d="M226 126v-14"/><circle cx="226" cy="105" r="9.5" fill="var(--leaf)"/></svg></div>' +
+      '<div class="pic" aria-hidden="true"><svg viewBox="0 0 240 152" fill="none" stroke="var(--ink)" stroke-width="2.6" stroke-linejoin="round" stroke-linecap="round"><path d="M184 40a9 9 0 0 1 0-18 12 12 0 0 1 22-4 12 12 0 0 1 6 22z" fill="var(--surface)"/><g class="mg"><path d="M67.5 47.5 78.5 58.5" stroke-width="5.5"/><circle cx="55" cy="35" r="14.5" fill="var(--surface)"/></g><rect x="5" y="126" width="230" height="17" rx="8.5" fill="var(--mint)"/><path d="M15.5 126v-16"/><circle cx="15.5" cy="103" r="11" fill="var(--leaf)"/><rect x="30" y="96" width="42" height="30" fill="var(--surface)"/><path d="M24 96 51 73l27 23" fill="var(--leaf)"/><rect x="34.5" y="101" width="9.5" height="9.5" rx="1.5" fill="var(--mint)"/><rect x="52" y="110" width="13" height="16" rx="2" fill="var(--sun)"/><path d="M140 74V57h9.5v11" fill="var(--surface)"/><rect x="92" y="82" width="62" height="44" fill="var(--surface)"/><path d="M85 82 123 51l38 31" fill="var(--sun)"/><rect x="98.5" y="90" width="15" height="15" rx="2" fill="var(--mint)"/><path d="M106 90v15M98.5 97.5h15" stroke-width="2"/><rect x="132.5" y="90" width="15" height="15" rx="2" fill="var(--mint)"/><path d="M140 90v15M132.5 97.5h15" stroke-width="2"/><rect x="113" y="104" width="20" height="22" rx="2.5" fill="var(--surface)"/><circle cx="128" cy="116" r="1.9" fill="var(--ink)" stroke="none"/><rect x="174" y="100" width="40" height="26" fill="var(--surface)"/><path d="M168 100 194 79l26 21" fill="var(--mint)"/><rect x="184" y="106" width="11" height="11" rx="1.5" fill="var(--leaf)"/><path d="M226 126v-14"/><circle cx="226" cy="105" r="9.5" fill="var(--leaf)"/></svg></div>' +
       '<h1>' + T.title + '</h1><p class="lead">' + T.lead + '</p>' +
+      '<div class="prog" id="prog" aria-hidden="true"><i></i></div>' +
       '<form id="f" novalidate>' + fields +
         '<p class="err" id="err" hidden></p>' +
         '<button type="submit" id="go">' + T.btn + '</button>' +
@@ -408,6 +409,13 @@ const AUTH_CSS = [
 'button:disabled{opacity:.6;cursor:progress}',
 '.err{margin:0 0 13px;padding:10px 13px;background:color-mix(in srgb,var(--bad) 13%,transparent);',
 'color:var(--bad);border-radius:12px;font-size:13px;line-height:1.5}',
+'.prog{height:5px;border-radius:999px;background:var(--sun-soft);overflow:hidden;margin:0 0 16px;visibility:hidden}',
+'.prog.on{visibility:visible}',
+'.prog i{display:block;height:100%;width:38%;border-radius:999px;background:var(--sun);animation:slide 1.15s ease-in-out infinite}',
+'@keyframes slide{0%{transform:translateX(-110%)}100%{transform:translateX(275%)}}',
+'@keyframes hunt{0%,100%{transform:translate(0,0)}30%{transform:translate(24px,-3px)}62%{transform:translate(48px,5px)}}',
+'.pic.busy .mg{animation:hunt 3.2s ease-in-out infinite}',
+'@media (prefers-reduced-motion:reduce){.prog i,.pic.busy .mg{animation:none}}',
 '.alt{margin:20px 0 0;font-size:13px;color:var(--muted);text-align:center}',
 'a{color:var(--accent);text-underline-offset:3px}',
 ':focus-visible{outline:2.5px solid var(--sun);outline-offset:2px}',
@@ -420,9 +428,12 @@ function authScript(kind, postPath) {
 '"use strict";',
 'var ITER=' + CLIENT_ITER + ', MIN=' + MIN_PW + ', KIND=' + JSON.stringify(kind) + ', PATH=' + JSON.stringify(postPath) + ';',
 'var f=document.getElementById("f"), go=document.getElementById("go"), errBox=document.getElementById("err");',
+'var prog=document.getElementById("prog"), pic=document.querySelector(".pic");',
 'var label=go.textContent;',
+'function busy(on){ prog.classList.toggle("on",on); if(pic) pic.classList.toggle("busy",on);',
+' go.disabled=on; go.textContent = on ? "확인 중…" : label; }',
 'function val(id){var el=document.getElementById(id);return el?el.value:"";}',
-'function fail(m){errBox.textContent=m;errBox.hidden=false;go.disabled=false;go.textContent=label;}',
+'function fail(m){errBox.textContent=m;errBox.hidden=false;busy(false);}',
 'function b64u(buf){var s="",a=new Uint8Array(buf);for(var i=0;i<a.length;i++)s+=String.fromCharCode(a[i]);',
 'return btoa(s).replace(/\\+/g,"-").replace(/\\//g,"_").replace(/=+$/,"");}',
 /* 비밀번호는 이 브라우저를 떠나지 않습니다. 늘린 결과만 보냅니다. */
@@ -450,7 +461,7 @@ function authScript(kind, postPath) {
 '  if(val("pw2")!==val("pw3")) return fail("새 비밀번호가 서로 다릅니다.");',
 '  if(val("pw")===val("pw2")) return fail("지금 쓰는 비밀번호와 같습니다.");',
 ' }',
-' go.disabled=true; go.textContent="확인 중…";',
+' busy(true);',
 ' try{',
 '  if(KIND==="password"){',
 '   var me=document.querySelector(".who").textContent.trim();',
