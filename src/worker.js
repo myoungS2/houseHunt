@@ -354,10 +354,10 @@ function authPage(kind, email) {
     '<meta name="color-scheme" content="light dark"><title>' + T.lead + ' · 집 고르기 장부</title>' +
     '<link rel="preconnect" href="https://fonts.googleapis.com">' +
     '<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>' +
-    '<link href="https://fonts.googleapis.com/css2?family=Hahmlet:wght@600&family=IBM+Plex+Sans+KR:wght@400;500;600&display=swap" rel="stylesheet">' +
+    '<link href="https://fonts.googleapis.com/css2?family=Jua&family=IBM+Plex+Sans+KR:wght@400;500;600&display=swap" rel="stylesheet">' +
     '<style nonce="' + nonce + '">' + AUTH_CSS + '</style></head><body>' +
     '<main class="card">' +
-      '<div class="mark">집</div>' +
+      '<div class="mark" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"><path d="M2.9 11.3 12 3.5l9.1 7.8"/><path d="M5 10.8V20a.9.9 0 0 0 .9.9h12.2a.9.9 0 0 0 .9-.9v-9.2"/><path d="M9.9 20.9v-5.3a.9.9 0 0 1 .9-.9h2.4a.9.9 0 0 1 .9.9v5.3"/></svg></div>' +
       '<h1>' + T.title + '</h1><p class="lead">' + T.lead + '</p>' +
       '<form id="f" novalidate>' + fields +
         '<p class="err" id="err" hidden></p>' +
@@ -381,30 +381,35 @@ function row(id, label, type, ac, ph, autofocus) {
 }
 
 const AUTH_CSS = [
-':root{--bg:#EDF1EF;--surface:#fff;--ink:#152220;--muted:#71847F;--line:#C0CCC8;--accent:#14594A;--bad:#A63F29}',
-'@media (prefers-color-scheme:dark){:root{--bg:#101614;--surface:#18201E;--ink:#E9EFEC;--muted:#879995;--line:#3C4A47;--accent:#5FBFA4;--bad:#E28B72}}',
+':root{--bg:#FAF5EC;--surface:#fff;--ink:#2C2822;--muted:#93897A;--line:#DFD2B9;',
+'--sun:#F7C13E;--sun-2:#FFD469;--sun-ink:#4A3708;--sun-soft:#FDF0CF;--accent:#2F7F66;--bad:#C2573C}',
+'@media (prefers-color-scheme:dark){:root{--bg:#1B1712;--surface:#241F19;--ink:#F3ECE1;--muted:#9A8F7F;',
+'--line:#4C4136;--sun:#F7C13E;--sun-2:#FFD469;--sun-ink:#3A2A06;--sun-soft:#3B2F14;--accent:#6DC5A4;--bad:#E5896C}}',
 '*{box-sizing:border-box}',
 'body{margin:0;background:var(--bg);color:var(--ink);font-family:"IBM Plex Sans KR","Apple SD Gothic Neo",system-ui,sans-serif;',
-'display:grid;place-items:center;min-height:100vh;padding:24px;font-size:15px}',
-'.card{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:30px 28px 24px;width:min(390px,100%);',
-'box-shadow:0 2px 6px rgba(14,36,31,.07),0 18px 44px -24px rgba(14,36,31,.5)}',
-'.mark{width:36px;height:36px;border-radius:9px;background:var(--accent);color:var(--surface);display:grid;place-items:center;',
-'font-family:Hahmlet,serif;font-weight:600;font-size:18px;margin-bottom:16px}',
-'h1{font-family:Hahmlet,"Noto Serif KR",serif;font-size:19px;font-weight:600;margin:0}',
-'.lead{margin:2px 0 22px;color:var(--muted);font-size:13px}',
-'.who{margin:0 0 18px;padding:8px 12px;background:var(--bg);border-radius:8px;font-size:13px;color:var(--muted)}',
-'label{display:block;font-size:12px;color:var(--muted);font-weight:500;margin:0 0 5px}',
-'input{width:100%;padding:9px 11px;border:1px solid var(--line);border-radius:8px;background:var(--surface);',
-'color:var(--ink);font:inherit;font-size:14px;margin-bottom:14px}',
-'input:focus{outline:none;border-color:var(--accent);box-shadow:0 0 0 3px color-mix(in srgb,var(--accent) 18%,transparent)}',
-'button{width:100%;padding:11px;border:0;border-radius:9px;background:var(--accent);color:var(--surface);',
-'font:inherit;font-weight:600;font-size:14px;cursor:pointer;margin-top:4px}',
-'button:hover:not(:disabled){filter:brightness(1.1)}',
+'display:grid;place-items:center;min-height:100vh;padding:24px;font-size:15px;line-height:1.6}',
+'.card{background:var(--surface);border:1.5px solid var(--line);border-radius:22px;padding:32px 28px 26px;width:min(392px,100%);',
+'box-shadow:0 2px 6px rgba(92,70,32,.07),0 20px 46px -24px rgba(92,70,32,.5)}',
+'.mark{width:44px;height:44px;border-radius:15px;background:var(--sun);color:var(--sun-ink);display:grid;place-items:center;',
+'margin-bottom:18px;box-shadow:0 2px 0 color-mix(in srgb,var(--sun) 70%,#000)}',
+'.mark svg{width:24px;height:24px;display:block}',
+'h1{font-family:Jua,"Apple SD Gothic Neo",sans-serif;font-size:23px;font-weight:400;margin:0;line-height:1.2}',
+'.lead{margin:2px 0 24px;color:var(--muted);font-size:13px}',
+'.who{margin:0 0 20px;padding:9px 14px;background:var(--sun-soft);border-radius:12px;font-size:13px;color:var(--ink)}',
+'label{display:block;font-size:11.5px;color:var(--muted);font-weight:600;margin:0 0 5px}',
+'input{width:100%;padding:10px 13px;border:1.5px solid var(--line);border-radius:12px;background:var(--surface);',
+'color:var(--ink);font:inherit;font-size:14px;margin-bottom:15px}',
+'input:focus{outline:none;border-color:var(--sun);box-shadow:0 0 0 3.5px var(--sun-soft)}',
+'button{width:100%;padding:12px;border:0;border-radius:999px;background:var(--sun);color:var(--sun-ink);',
+'font:inherit;font-weight:600;font-size:14.5px;cursor:pointer;margin-top:6px;',
+'box-shadow:0 2px 0 color-mix(in srgb,var(--sun) 70%,#000);transition:transform .12s,background .15s}',
+'button:hover:not(:disabled){background:var(--sun-2);transform:translateY(-1px)}',
 'button:disabled{opacity:.6;cursor:progress}',
-'.err{margin:0 0 12px;padding:9px 12px;background:color-mix(in srgb,var(--bad) 12%,transparent);',
-'color:var(--bad);border-radius:8px;font-size:13px;line-height:1.45}',
-'.alt{margin:18px 0 0;font-size:13px;color:var(--muted);text-align:center}',
-'a{color:var(--accent)}',
+'.err{margin:0 0 13px;padding:10px 13px;background:color-mix(in srgb,var(--bad) 13%,transparent);',
+'color:var(--bad);border-radius:12px;font-size:13px;line-height:1.5}',
+'.alt{margin:20px 0 0;font-size:13px;color:var(--muted);text-align:center}',
+'a{color:var(--accent);text-underline-offset:3px}',
+':focus-visible{outline:2.5px solid var(--sun);outline-offset:2px}',
 '@media (prefers-reduced-motion:reduce){*{transition:none!important}}'
 ].join('');
 
