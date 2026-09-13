@@ -8,12 +8,15 @@ rules = [{ type = "Text", globs = ["**/*.html"], fallthrough = true }]
 [[d1_databases]]
 binding = "DB"
 database_name = "house-hunt"
-database_id = "여기에-d1-database-id를-넣으세요"
+database_id = "166e5a0c-a750-4536-b463-9ee58e86d414"
 
-# 사진을 안 쓰려면 이 블록을 통째로 지우세요. 앱이 알아서 업로드 버튼을 숨깁니다.
-[[r2_buckets]]
-binding = "PHOTOS"
-bucket_name = "house-hunt-photos"
+# 사진 저장소. 대시보드에서 R2를 켠 다음 아래 세 줄의 주석을 풀고,
+#   npx wrangler r2 bucket create house-hunt-photos
+#   npx wrangler deploy
+# 를 하면 앱에 사진 업로드 버튼이 생깁니다. 주석 상태면 버튼이 숨겨집니다.
+# [[r2_buckets]]
+# binding = "PHOTOS"
+# bucket_name = "house-hunt-photos"
 
 [vars]
 # 가입을 이메일로도 못 박고 싶을 때. 비우거나 지우면 가입 코드만으로 가입됩니다.

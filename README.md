@@ -8,6 +8,33 @@ Cloudflare Worker에 올리면 이메일과 비밀번호로 로그인하고, 사
 
 ---
 
+## 지금 배포된 곳
+
+**https://house-hunt.mythe1004.workers.dev**
+
+| 항목 | 상태 |
+|---|---|
+| Worker | 배포됨 |
+| D1 `house-hunt` | 만들어짐, 테이블 5개 적용 |
+| 세션 열쇠·가입 코드 | secret으로 등록됨 |
+| R2 사진 저장소 | **아직 안 켬** |
+
+사진을 쓰려면 Cloudflare 대시보드에서 R2를 먼저 켠 뒤, `wrangler.toml`의
+`[[r2_buckets]]` 세 줄 주석을 풀고 아래를 실행하세요.
+
+```bash
+npx wrangler r2 bucket create house-hunt-photos
+npx wrangler deploy
+```
+
+가입 코드를 바꾸려면 이 한 줄이면 됩니다. 다시 배포할 필요는 없습니다.
+
+```bash
+npx wrangler secret put SIGNUP_CODE
+```
+
+---
+
 ## 배포 순서
 
 ### 1. D1 만들기
