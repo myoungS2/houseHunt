@@ -267,6 +267,20 @@ legend{font-size:11px;letter-spacing:.08em;color:var(--muted);font-weight:700;pa
 .empty h3{font-family:var(--f-display);font-size:19px;font-weight:400;margin:0 0 7px}
 .empty p{margin:0 0 18px;color:var(--muted);font-size:13.5px}
 .emptyBtns{display:flex;gap:9px;justify-content:center;flex-wrap:wrap}
+.bookName{font-weight:600;color:var(--ink);font-size:12.5px}
+.bookName b{color:var(--muted);font-weight:500}
+.bookSel{width:auto;padding:3px 8px;font-size:12.5px;border-radius:999px;border:1.5px solid var(--line-2);background:var(--surface)}
+.storage .who{max-width:150px;overflow:hidden;text-overflow:ellipsis}
+.mate-row{display:flex;align-items:center;gap:10px;padding:9px 0;border-bottom:1px solid var(--line)}
+.mate-row:last-of-type{border-bottom:0}
+.ava{width:30px;height:30px;border-radius:999px;background:var(--mint);color:var(--ink);display:grid;place-items:center;font-weight:600;font-size:13px;flex:none}
+.mate-nm{flex:1;min-width:0;font-size:13.5px;display:flex;flex-direction:column;line-height:1.35}
+.mate-nm b{font-weight:500;color:var(--muted)}
+.mate-em{font-size:11.5px;color:var(--muted);overflow:hidden;text-overflow:ellipsis}
+.mate{display:inline-block;margin-left:7px;padding:0 6px;border-radius:999px;background:var(--surface-3);color:var(--muted);font-size:10.5px;font-family:var(--f-mono)}
+.inviteOut{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-top:10px}
+.inviteOut input{font-family:var(--f-mono);font-size:12px;flex:1;min-width:220px}
+.byline{font-size:11px;color:var(--muted);margin-top:2px}
 .empty.loading{border-style:solid;border-color:var(--line)}
 .dots{display:flex;gap:8px;justify-content:center}
 .dots i{width:9px;height:9px;border-radius:50%;background:var(--sun);opacity:.3;animation:bob 1.15s ease-in-out infinite}
@@ -445,6 +459,10 @@ const $$ = (s,r)=>Array.prototype.slice.call((r||document).querySelectorAll(s));
 const esc = s => String(s==null?'':s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const uid = ()=> 'p'+Date.now().toString(36)+Math.random().toString(36).slice(2,6);
 function nm(v){ if(v===''||v==null) return null; const n=Number(v); return isFinite(n)?n:null; }
+function nameOf(email){
+  const m=state.members.find(x=>x.email===email);
+  return m?(m.name||m.email.split('@')[0]):String(email||'').split('@')[0];
+}
 function labelOf(list,k,f){ for(const x of list) if((x.k||x[0])===k) return (x.l||x[1]); return f||'—'; }
 
 function fmtMan(v){
@@ -473,7 +491,28 @@ function monthly(p,s){
   const er=(s.equityRate||0)/100;
   return loan*lr/12 + equity*er/12 + (nm(p.fee)||0);
 }
+/* 별점은 사람마다 따로 매깁니다. 예전 데이터(ratings 하나)는 장부 주인이 매긴 것으로 봅니다. */
+function ratingMap(p){
+  if(p.ratingsBy && typeof p.ratingsBy==='object') return p.ratingsBy;
+  if(p.ratings && Object.keys(p.ratings).length && state.book) return {[state.book.owner]:p.ratings};
+  return {};
+}
+function myRatings(p){ const who=store.user?store.user.email:'me'; return ratingMap(p)[who]||{}; }
+function raters(p){ return Object.keys(ratingMap(p)).filter(k=>{
+  const r=ratingMap(p)[k]; return r && Object.keys(r).some(x=>nm(r[x])>0); }); }
+function scoreBy(p,s,who){
+  let got=0,max=0; const r=(ratingMap(p)[who])||{};
+  s.ratings.forEach(it=>{ const v=nm(r[it.key]); if(v>0){ got+=v*it.weight; max+=5*it.weight; } });
+  return max?Math.round(got/max*100):null;
+}
+/* 여러 사람이 매겼으면 평균을 총점으로 씁니다. */
 function score(p,s){
+  const people=raters(p);
+  if(people.length){
+    const vals=people.map(w=>scoreBy(p,s,w)).filter(v=>v!=null);
+    if(vals.length) return Math.round(vals.reduce((a,b)=>a+b,0)/vals.length);
+    return null;
+  }
   let got=0,max=0; const r=p.ratings||{};
   s.ratings.forEach(it=>{ const v=nm(r[it.key]); if(v>0){ got+=v*it.weight; max+=5*it.weight; } });
   return max?Math.round(got/max*100):null;
@@ -484,6 +523,7 @@ const LS_P='househunt.props.v1', LS_S='househunt.settings.v1', LS_X='househunt.s
 const state = {
   props:{}, settings:JSON.parse(JSON.stringify(DEFAULT_SETTINGS)),
   view:'table', sort:{key:'score',dir:'desc'}, picks:[], editing:null, draft:null, loading:true,
+  book:null, books:[], members:[],
   samplesOff: (function(){ try{return localStorage.getItem(LS_X)==='1';}catch(e){return false;} })(),
   cmpSame:false
 };
@@ -520,6 +560,7 @@ const store = {
       }
       if(r.ok && (r.headers.get('content-type')||'').indexOf('json')>=0){
         this.user=await r.json(); this.mode='api'; this.photosOk=!!this.user.photos;
+        state.book=this.user.book||null; state.books=this.user.books||[];
         this.clearLocal(); state.props={};
         try{ await this.pull(); }catch(e){ toast('내 매물을 불러오지 못했습니다'); }
         settled(); paintStorage(); render();
@@ -554,6 +595,8 @@ const store = {
     const m={}; (j.properties||[]).forEach(p=>{ if(p&&p.id) m[p.id]=p; });
     state.props=m;
     if(j.settings) state.settings=Object.assign({},DEFAULT_SETTINGS,j.settings);
+    if(j.book) state.book=j.book;
+    if(j.members) state.members=j.members;
   },
   async call(method,path,body){
     const opt={method,credentials:'same-origin',headers:{}};
@@ -705,7 +748,16 @@ function toast(msg){
 function paintStorage(){
   const el=$('#storage');
   if(store.mode==='api'&&store.user){
-    el.innerHTML='<span class="dot on"></span><span>'+esc(store.user.email)+'</span>'+
+    const many=state.books.length>1;
+    const bookBit = state.book
+      ? (many
+          ? '<select class="bookSel" data-booksel="1" aria-label="장부 고르기">'+
+            state.books.map(b=>'<option value="'+esc(b.id)+'"'+(b.id===state.book.id?' selected':'')+'>'+
+              esc(b.name)+(b.people>1?' · '+b.people+'명':'')+'</option>').join('')+'</select>'
+          : '<span class="bookName">'+esc(state.book.name)+
+            (state.members.length>1?' <b>· '+state.members.length+'명</b>':'')+'</span>')
+      : '';
+    el.innerHTML=bookBit+'<span class="dot on"></span><span class="who">'+esc(store.user.email)+'</span>'+
       '<button class="btn sm ghost" data-logout="1" style="padding:2px 8px">로그아웃</button>';
     return;
   }
@@ -979,6 +1031,7 @@ function renderSettings(){
       '<p class="desc">총점은 매긴 항목만 가지고 100점으로 환산합니다. 가중치 3은 1보다 세 배 무겁게 반영됩니다. 아직 별점을 안 준 항목은 계산에서 빠집니다.</p>'+
       rows+
       '<div style="margin-top:12px"><button class="btn sm" id="addRating">항목 추가</button></div></div>'+
+    (store.mode==='api'&&state.book ? sharePanel() : '')+
     '<div class="panel"><h2>데이터</h2>'+
       '<p class="desc">'+(
         store.mode==='api'
@@ -995,12 +1048,43 @@ function renderSettings(){
       '</div></div>';
 }
 
+/* 같은 장부를 함께 쓰는 사람들 */
+function sharePanel(){
+  const owner = state.book.role==='owner';
+  const list = state.members.map(m=>
+    '<div class="mate-row"><span class="ava">'+esc((m.name||m.email).slice(0,1))+'</span>'+
+    '<span class="mate-nm">'+esc(m.name||m.email.split('@')[0])+
+      (m.email===(store.user||{}).email?' <b>(나)</b>':'')+
+      '<span class="mate-em">'+esc(m.email)+'</span></span>'+
+    '<span class="pill '+(m.role==='owner'?'s-shortlist':'s-interest')+'">'+(m.role==='owner'?'주인':'참여')+'</span>'+
+    (owner&&m.role!=='owner'?'<button class="btn sm ghost" data-kick="'+esc(m.email)+'">내보내기</button>':'')+
+    '</div>').join('');
+
+  return '<div class="panel"><h2>함께 쓰는 사람</h2>'+
+    '<p class="desc">같은 장부에 들어온 사람은 매물을 함께 보고 적습니다. 별점은 사람마다 따로 매겨지고, 총점은 매긴 사람들의 평균입니다.</p>'+
+    '<div class="field" style="max-width:280px;margin-bottom:16px"><label for="bookName">장부 이름</label>'+
+      '<input type="text" id="bookName" value="'+esc(state.book.name)+'"'+(store.mode==='api'?'':' disabled')+'></div>'+
+    list+
+    '<div id="inviteBox" style="margin-top:16px">'+
+      (state.book.role==='owner'
+        ? '<button class="btn primary sm" id="makeInvite">초대 링크 만들기</button>'+
+          '<span class="hint" style="margin-left:9px">링크를 받은 사람은 '+7+'일 안에 한 번 들어올 수 있습니다</span>'
+        : '<button class="btn sm" id="leaveBook">이 장부에서 나가기</button>')+
+    '</div></div>';
+}
+
 /* ═══ 입력 폼 ════════════════════════════════ */
 function openSheet(id){
   const src = id ? (allProps().find(p=>p.id===id)||null) : null;
   state.editing = id||null;
   state.draft = src ? JSON.parse(JSON.stringify(src)) : {id:uid(), status:'interest', dealType:'jeonse', ratings:{}, photos:[]};
-  if(!state.draft.ratings) state.draft.ratings={};
+  if(!state.draft.ratingsBy || typeof state.draft.ratingsBy!=='object'){
+    state.draft.ratingsBy = src ? Object.assign({}, ratingMap(src)) : {};
+  }
+  delete state.draft.ratings;
+  const who = store.user?store.user.email:'me';
+  if(!state.draft.ratingsBy[who]) state.draft.ratingsBy[who]={};
+  state.draft.ratings = state.draft.ratingsBy[who];   // 별점 버튼이 이 객체를 고칩니다
   if(!state.draft.photos) state.draft.photos=[];
   $('#sheetTitle').textContent = src ? '매물 수정' : '매물 추가';
   $('#sheetDelete').style.display = src ? '' : 'none';
@@ -1017,10 +1101,14 @@ function closeSheet(){
 function formHTML(d){
   const groups=FORM.map(g=>'<fieldset><legend>'+g.g+'</legend><div class="fgrid">'+
     g.f.map(f=>field(f,d)).join('')+'</div></fieldset>').join('');
-  const rate='<fieldset><legend>별점</legend><div class="rateGrid">'+
+  const me = store.user?store.user.email:'me';
+  const others = Object.keys(d.ratingsBy||{}).filter(k=>k!==me&&Object.keys(d.ratingsBy[k]||{}).length);
+  const rate='<fieldset><legend>별점'+(state.members.length>1?' — 내가 매기는 점수':'')+'</legend><div class="rateGrid">'+
     state.settings.ratings.map(it=>{
       const v=nm((d.ratings||{})[it.key])||0;
-      return '<div class="rateItem"><span class="rl">'+esc(it.label)+' <span class="rw">×'+it.weight+'</span></span>'+
+      const side=others.map(k=>{ const ov=nm((d.ratingsBy[k]||{})[it.key])||0;
+        return ov?'<span class="mate" title="'+esc(nameOf(k))+'">'+esc(nameOf(k).slice(0,1))+' '+ov+'</span>':''; }).join('');
+      return '<div class="rateItem"><span class="rl">'+esc(it.label)+' <span class="rw">×'+it.weight+'</span>'+side+'</span>'+
         '<span class="stars" role="group" aria-label="'+esc(it.label)+' 별점">'+
         [1,2,3,4,5].map(n=>'<button type="button" class="'+(n<=v?'on':'')+'" data-star="'+it.key+'" data-n="'+n+'" aria-label="'+n+'점">'+STAR+'</button>').join('')+
         '</span></div>';
@@ -1102,6 +1190,13 @@ function saveSheet(){
   const editing=state.editing, d=collectForm();
   if(!d.name){ toast('이름은 채워 주세요'); const f=$('#sheetBody input[name=name]'); if(f) f.focus(); return; }
   delete d._sample;
+  const who = store.user?store.user.email:'me';
+  if(d.ratingsBy && d.ratings) d.ratingsBy[who]=d.ratings;
+  delete d.ratings;
+  if(d.ratingsBy) Object.keys(d.ratingsBy).forEach(k=>{
+    const r=d.ratingsBy[k];
+    if(!r || !Object.keys(r).some(x=>nm(r[x])>0)) delete d.ratingsBy[k];
+  });
   if(d.manualRank==null) d.manualRank=Object.keys(state.props).length;
   store.put(d); closeSheet();
   toast(editing?'저장했습니다':'추가했습니다');
@@ -1151,7 +1246,7 @@ function refreshPhotos(){
 
 /* ═══ 이벤트 ════════════════════════════════ */
 document.addEventListener('click', e=>{
-  const t=e.target.closest('[data-view],[data-sort],[data-order],[data-edit],[data-move],[data-zoom],[data-go],[data-star],[data-rweight],[data-rdel],[data-rmphoto],[data-logout],[data-add],button');
+  const t=e.target.closest('[data-view],[data-sort],[data-order],[data-edit],[data-move],[data-zoom],[data-go],[data-star],[data-rweight],[data-rdel],[data-rmphoto],[data-logout],[data-add],[data-kick],button');
   if(!t) return;
 
   if(t.dataset.view){ setView(t.dataset.view); return; }
@@ -1161,6 +1256,14 @@ document.addEventListener('click', e=>{
   if(t.dataset.move){ move(t.dataset.id,t.dataset.move); return; }
   if(t.dataset.edit){ openSheet(t.dataset.edit); return; }
   if(t.dataset.add){ openSheet(null); return; }
+  if(t.dataset.kick){
+    if(t.dataset.armed!=='1'){ t.dataset.armed='1'; t.textContent='정말 내보낼까요?';
+      setTimeout(()=>{ if(t.dataset.armed==='1'){ t.dataset.armed=''; t.textContent='내보내기'; } },4000); return; }
+    store.call('DELETE','/api/members/'+encodeURIComponent(t.dataset.kick))
+      .then(()=>store.pull()).then(()=>{ toast('내보냈습니다'); render(); })
+      .catch(e=>toast(e.message));
+    return;
+  }
   if(t.dataset.zoom){ $('#lightboxImg').src=t.dataset.zoom; $('#lightbox').classList.add('open'); return; }
   if(t.dataset.logout){
     t.disabled=true;
@@ -1200,6 +1303,34 @@ document.addEventListener('click', e=>{
       closeSheet(); break;
     }
     case 'goCompare': setView('compare'); break;
+    case 'makeInvite': {
+      t.disabled=true; t.textContent='만드는 중…';
+      store.call('POST','/api/book/invite',{}).then(j=>{
+        $('#inviteBox').innerHTML =
+          '<p class="desc" style="margin:0 0 4px">아래 링크를 같이 쓸 사람에게 보내세요. '+j.days+'일 안에 한 번만 쓸 수 있습니다.</p>'+
+          '<div class="inviteOut"><input type="text" id="inviteUrl" readonly value="'+esc(j.url)+'">'+
+          '<button class="btn sm primary" id="copyInvite">복사</button>'+
+          '<button class="btn sm ghost" id="killInvite">링크 끄기</button></div>';
+        const f=$('#inviteUrl'); if(f){ f.focus(); f.select(); }
+      }).catch(e=>{ toast(e.message); t.disabled=false; t.textContent='초대 링크 만들기'; });
+      break;
+    }
+    case 'copyInvite': {
+      const f=$('#inviteUrl');
+      if(f && navigator.clipboard && navigator.clipboard.writeText){
+        navigator.clipboard.writeText(f.value).then(()=>toast('초대 링크를 복사했습니다')).catch(()=>toast('복사가 막혀 있습니다'));
+      } else if(f){ f.select(); toast('길게 눌러 복사해 주세요'); }
+      break;
+    }
+    case 'killInvite':
+      store.call('DELETE','/api/book/invite').then(()=>{ toast('초대 링크를 껐습니다'); render(); }).catch(e=>toast(e.message));
+      break;
+    case 'leaveBook': {
+      if(t.dataset.armed!=='1'){ t.dataset.armed='1'; t.textContent='정말 나갈까요?';
+        setTimeout(()=>{ if(t.dataset.armed==='1'){ t.dataset.armed=''; t.textContent='이 장부에서 나가기'; } },4000); break; }
+      store.call('POST','/api/book/leave',{}).then(()=>location.reload()).catch(e=>toast(e.message));
+      break;
+    }
     case 'clearPicks': state.picks=[]; render(); break;
     case 'addRating':
       state.settings.ratings.push({key:'r'+Date.now().toString(36), label:'새 항목', weight:2});
@@ -1220,6 +1351,20 @@ document.addEventListener('change', e=>{
   const t=e.target;
   if(t.dataset && t.dataset.pick){ togglePick(t.dataset.pick, t.checked); return; }
   if(t.id==='cmpSame'){ state.cmpSame=t.checked; render(); return; }
+  if(t.dataset && t.dataset.booksel){
+    store.call('POST','/api/book/switch',{bookId:t.value})
+      .then(()=>location.reload()).catch(e=>toast(e.message));
+    return;
+  }
+  if(t.id==='bookName'){
+    const name=t.value.trim(); if(!name) return;
+    store.call('POST','/api/book/rename',{name})
+      .then(()=>{ state.book.name=name;
+        const b=state.books.find(x=>x.id===state.book.id); if(b) b.name=name;
+        toast('장부 이름을 바꿨습니다'); render(); })
+      .catch(e=>toast(e.message));
+    return;
+  }
   if(t.id==='loanRate'){ state.settings.loanRate=Number(t.value)||0; store.putSettings(); return; }
   if(t.id==='equityRate'){ state.settings.equityRate=Number(t.value)||0; store.putSettings(); return; }
   if(t.dataset && t.dataset.rlabel!=null){
