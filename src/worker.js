@@ -357,7 +357,7 @@ function authPage(kind, email) {
     '<link href="https://fonts.googleapis.com/css2?family=Jua&family=IBM+Plex+Sans+KR:wght@400;500;600&display=swap" rel="stylesheet">' +
     '<style nonce="' + nonce + '">' + AUTH_CSS + '</style></head><body>' +
     '<main class="card">' +
-      '<div class="mark" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"><path d="M2.9 11.3 12 3.5l9.1 7.8"/><path d="M5 10.8V20a.9.9 0 0 0 .9.9h12.2a.9.9 0 0 0 .9-.9v-9.2"/><path d="M9.9 20.9v-5.3a.9.9 0 0 1 .9-.9h2.4a.9.9 0 0 1 .9.9v5.3"/></svg></div>' +
+      '<div class="pic" aria-hidden="true"><svg viewBox="0 0 240 152" fill="none" stroke="var(--ink)" stroke-width="2.6" stroke-linejoin="round" stroke-linecap="round"><path d="M184 40a9 9 0 0 1 0-18 12 12 0 0 1 22-4 12 12 0 0 1 6 22z" fill="var(--surface)"/><path d="M67.5 47.5 78.5 58.5" stroke-width="5.5"/><circle cx="55" cy="35" r="14.5" fill="var(--surface)"/><rect x="5" y="126" width="230" height="17" rx="8.5" fill="var(--mint)"/><path d="M15.5 126v-16"/><circle cx="15.5" cy="103" r="11" fill="var(--leaf)"/><rect x="30" y="96" width="42" height="30" fill="var(--surface)"/><path d="M24 96 51 73l27 23" fill="var(--leaf)"/><rect x="34.5" y="101" width="9.5" height="9.5" rx="1.5" fill="var(--mint)"/><rect x="52" y="110" width="13" height="16" rx="2" fill="var(--sun)"/><path d="M140 74V57h9.5v11" fill="var(--surface)"/><rect x="92" y="82" width="62" height="44" fill="var(--surface)"/><path d="M85 82 123 51l38 31" fill="var(--sun)"/><rect x="98.5" y="90" width="15" height="15" rx="2" fill="var(--mint)"/><path d="M106 90v15M98.5 97.5h15" stroke-width="2"/><rect x="132.5" y="90" width="15" height="15" rx="2" fill="var(--mint)"/><path d="M140 90v15M132.5 97.5h15" stroke-width="2"/><rect x="113" y="104" width="20" height="22" rx="2.5" fill="var(--surface)"/><circle cx="128" cy="116" r="1.9" fill="var(--ink)" stroke="none"/><rect x="174" y="100" width="40" height="26" fill="var(--surface)"/><path d="M168 100 194 79l26 21" fill="var(--mint)"/><rect x="184" y="106" width="11" height="11" rx="1.5" fill="var(--leaf)"/><path d="M226 126v-14"/><circle cx="226" cy="105" r="9.5" fill="var(--leaf)"/></svg></div>' +
       '<h1>' + T.title + '</h1><p class="lead">' + T.lead + '</p>' +
       '<form id="f" novalidate>' + fields +
         '<p class="err" id="err" hidden></p>' +
@@ -381,28 +381,29 @@ function row(id, label, type, ac, ph, autofocus) {
 }
 
 const AUTH_CSS = [
-':root{--bg:#FAF5EC;--surface:#fff;--ink:#2C2822;--muted:#93897A;--line:#DFD2B9;',
-'--sun:#F7C13E;--sun-2:#FFD469;--sun-ink:#4A3708;--sun-soft:#FDF0CF;--accent:#2F7F66;--bad:#C2573C}',
-'@media (prefers-color-scheme:dark){:root{--bg:#1B1712;--surface:#241F19;--ink:#F3ECE1;--muted:#9A8F7F;',
-'--line:#4C4136;--sun:#F7C13E;--sun-2:#FFD469;--sun-ink:#3A2A06;--sun-soft:#3B2F14;--accent:#6DC5A4;--bad:#E5896C}}',
+':root{--bg:#FFFAF0;--surface:#fff;--ink:#2A2620;--muted:#948A7C;--line:#E4D3BB;',
+'--sun:#F2643A;--sun-2:#FF7A52;--sun-ink:#fff;--sun-soft:#FFEBDD;',
+'--mint:#B4E5CC;--leaf:#87CC5A;--accent:#2E7D5B;--bad:#B33A24}',
+'@media (prefers-color-scheme:dark){:root{--bg:#1C1814;--surface:#252019;--ink:#F5EEE3;--muted:#9C9080;',
+'--line:#4E4237;--sun:#F2643A;--sun-2:#FF7A52;--sun-ink:#fff;--sun-soft:#3E271D;',
+'--mint:#6FBF9C;--leaf:#8FCB63;--accent:#5FC095;--bad:#E2846A}}',
 '*{box-sizing:border-box}',
 'body{margin:0;background:var(--bg);color:var(--ink);font-family:"IBM Plex Sans KR","Apple SD Gothic Neo",system-ui,sans-serif;',
 'display:grid;place-items:center;min-height:100vh;padding:24px;font-size:15px;line-height:1.6}',
-'.card{background:var(--surface);border:1.5px solid var(--line);border-radius:22px;padding:32px 28px 26px;width:min(392px,100%);',
+'.card{background:var(--surface);border:1.5px solid var(--line);border-radius:24px;padding:26px 28px 26px;width:min(394px,100%);',
 'box-shadow:0 2px 6px rgba(92,70,32,.07),0 20px 46px -24px rgba(92,70,32,.5)}',
-'.mark{width:44px;height:44px;border-radius:15px;background:var(--sun);color:var(--sun-ink);display:grid;place-items:center;',
-'margin-bottom:18px;box-shadow:0 2px 0 color-mix(in srgb,var(--sun) 70%,#000)}',
-'.mark svg{width:24px;height:24px;display:block}',
-'h1{font-family:Jua,"Apple SD Gothic Neo",sans-serif;font-size:23px;font-weight:400;margin:0;line-height:1.2}',
-'.lead{margin:2px 0 24px;color:var(--muted);font-size:13px}',
-'.who{margin:0 0 20px;padding:9px 14px;background:var(--sun-soft);border-radius:12px;font-size:13px;color:var(--ink)}',
+'.pic{max-width:268px;margin:0 auto 14px}',
+'.pic svg{width:100%;height:auto;display:block}',
+'h1{font-family:Jua,"Apple SD Gothic Neo",sans-serif;font-size:23px;font-weight:400;margin:0;line-height:1.2;text-align:center}',
+'.lead{margin:2px 0 24px;color:var(--muted);font-size:13px;text-align:center}',
+'.who{margin:0 0 20px;padding:9px 14px;background:var(--sun-soft);border-radius:12px;font-size:13px;color:var(--ink);text-align:center}',
 'label{display:block;font-size:11.5px;color:var(--muted);font-weight:600;margin:0 0 5px}',
 'input{width:100%;padding:10px 13px;border:1.5px solid var(--line);border-radius:12px;background:var(--surface);',
 'color:var(--ink);font:inherit;font-size:14px;margin-bottom:15px}',
 'input:focus{outline:none;border-color:var(--sun);box-shadow:0 0 0 3.5px var(--sun-soft)}',
 'button{width:100%;padding:12px;border:0;border-radius:999px;background:var(--sun);color:var(--sun-ink);',
 'font:inherit;font-weight:600;font-size:14.5px;cursor:pointer;margin-top:6px;',
-'box-shadow:0 2px 0 color-mix(in srgb,var(--sun) 70%,#000);transition:transform .12s,background .15s}',
+'box-shadow:0 2px 0 color-mix(in srgb,var(--sun) 72%,#000);transition:transform .12s,background .15s}',
 'button:hover:not(:disabled){background:var(--sun-2);transform:translateY(-1px)}',
 'button:disabled{opacity:.6;cursor:progress}',
 '.err{margin:0 0 13px;padding:10px 13px;background:color-mix(in srgb,var(--bad) 13%,transparent);',

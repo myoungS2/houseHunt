@@ -5,13 +5,14 @@
 <style>
 /* ── 밝고 둥근 “볕 드는 집” 팔레트 ───────────── */
 :root{
-  --bg:#FAF5EC; --surface:#FFFFFF; --surface-2:#FDF9F2; --surface-3:#F3EADA;
-  --ink:#2C2822; --ink-2:#5B5348; --muted:#93897A;
-  --line:#EFE5D3; --line-2:#DFD2B9;
-  --sun:#F7C13E; --sun-2:#FFD469; --sun-ink:#4A3708; --sun-soft:#FDF0CF;
-  --accent:#2F7F66; --accent-2:#3E9E80; --accent-soft:#E2F1EA; --accent-ink:#1C5645;
-  --good:#2F7F66; --good-soft:#E2F1EA;
-  --bad:#C2573C; --bad-soft:#FBE7E0;
+  --bg:#FFFAF0; --surface:#FFFFFF; --surface-2:#FFF7EC; --surface-3:#FFEBDD;
+  --ink:#2A2620; --ink-2:#58514A; --muted:#948A7C;
+  --line:#F2E6D6; --line-2:#E4D3BB;
+  --sun:#F2643A; --sun-2:#FF7A52; --sun-ink:#FFFFFF; --sun-soft:#FFEBDD;
+  --mint:#B4E5CC; --leaf:#87CC5A; --amber:#FFA843;
+  --accent:#2E7D5B; --accent-2:#3D9C71; --accent-soft:#E2F1E8; --accent-ink:#1D5A3F;
+  --good:#2E7D5B; --good-soft:#E2F1E8;
+  --bad:#B33A24; --bad-soft:#FBE0D9;
   --warn:#B07A17; --warn-soft:#FBEED4;
   --info:#3E7FA8; --info-soft:#E3EFF7;
   --shadow-1:0 1px 2px rgba(92,70,32,.06);
@@ -23,13 +24,14 @@
 }
 @media (prefers-color-scheme: dark){
   :root:not([data-theme="light"]){
-    --bg:#1B1712; --surface:#241F19; --surface-2:#2B251E; --surface-3:#362E24;
-    --ink:#F3ECE1; --ink-2:#C6BCAD; --muted:#9A8F7F;
-    --line:#392F26; --line-2:#4C4136;
-    --sun:#F7C13E; --sun-2:#FFD469; --sun-ink:#3A2A06; --sun-soft:#3B2F14;
-    --accent:#6DC5A4; --accent-2:#8ADCBB; --accent-soft:#1E3229; --accent-ink:#A9E6CE;
-    --good:#6DC5A4; --good-soft:#1E3229;
-    --bad:#E5896C; --bad-soft:#382018;
+    --bg:#1C1814; --surface:#252019; --surface-2:#2C261E; --surface-3:#3A2E24;
+    --ink:#F5EEE3; --ink-2:#C8BDAE; --muted:#9C9080;
+    --line:#3A3027; --line-2:#4E4237;
+    --sun:#F2643A; --sun-2:#FF7A52; --sun-ink:#FFFFFF; --sun-soft:#3E271D;
+    --mint:#6FBF9C; --leaf:#8FCB63; --amber:#FFB55C;
+    --accent:#5FC095; --accent-2:#7FD4AE; --accent-soft:#1D3529; --accent-ink:#A3E3C6;
+    --good:#5FC095; --good-soft:#1D3529;
+    --bad:#E2846A; --bad-soft:#3A211A;
     --warn:#E0AE55; --warn-soft:#332714;
     --info:#7CB4D8; --info-soft:#1A2935;
     --shadow-1:0 1px 2px rgba(0,0,0,.4);
@@ -37,13 +39,14 @@
   }
 }
 :root[data-theme="dark"]{
-  --bg:#1B1712; --surface:#241F19; --surface-2:#2B251E; --surface-3:#362E24;
-  --ink:#F3ECE1; --ink-2:#C6BCAD; --muted:#9A8F7F;
-  --line:#392F26; --line-2:#4C4136;
-  --sun:#F7C13E; --sun-2:#FFD469; --sun-ink:#3A2A06; --sun-soft:#3B2F14;
-  --accent:#6DC5A4; --accent-2:#8ADCBB; --accent-soft:#1E3229; --accent-ink:#A9E6CE;
-  --good:#6DC5A4; --good-soft:#1E3229;
-  --bad:#E5896C; --bad-soft:#382018;
+    --bg:#1C1814; --surface:#252019; --surface-2:#2C261E; --surface-3:#3A2E24;
+  --ink:#F5EEE3; --ink-2:#C8BDAE; --muted:#9C9080;
+  --line:#3A3027; --line-2:#4E4237;
+  --sun:#F2643A; --sun-2:#FF7A52; --sun-ink:#FFFFFF; --sun-soft:#3E271D;
+  --mint:#6FBF9C; --leaf:#8FCB63; --amber:#FFB55C;
+  --accent:#5FC095; --accent-2:#7FD4AE; --accent-soft:#1D3529; --accent-ink:#A3E3C6;
+  --good:#5FC095; --good-soft:#1D3529;
+  --bad:#E2846A; --bad-soft:#3A211A;
   --warn:#E0AE55; --warn-soft:#332714;
   --info:#7CB4D8; --info-soft:#1A2935;
   --shadow-1:0 1px 2px rgba(0,0,0,.4);
@@ -246,8 +249,8 @@ legend{font-size:11px;letter-spacing:.08em;color:var(--muted);font-weight:700;pa
 .rateItem .rw{font-size:10.5px;color:var(--muted);font-family:var(--f-mono)}
 .stars{display:flex;gap:3px;flex:none}
 .stars button{border:0;background:transparent;padding:2px;cursor:pointer;line-height:0;color:var(--line-2);transition:transform .12s}
-.stars button.on{color:var(--sun)}
-.stars button:hover{color:var(--sun-2);transform:scale(1.15)}
+.stars button.on{color:var(--amber)}
+.stars button:hover{color:var(--amber);transform:scale(1.15)}
 .stars svg{width:18px;height:18px;display:block}
 .photoRow{display:flex;gap:9px;flex-wrap:wrap;align-items:center}
 .photoRow figure{margin:0;position:relative}
@@ -259,8 +262,8 @@ legend{font-size:11px;letter-spacing:.08em;color:var(--muted);font-weight:700;pa
 
 /* ── 나머지 ─────────────────────────────── */
 .empty{text-align:center;padding:52px 20px 58px;border:1.5px dashed var(--line-2);border-radius:var(--r);background:var(--surface-2)}
-.empty .pic{color:var(--line-2);margin-bottom:14px}
-.empty .pic svg{width:84px;height:84px;display:block;margin:0 auto}
+.empty .pic{margin:0 auto 16px;max-width:250px}
+.empty .pic svg{width:100%;height:auto;display:block}
 .empty h3{font-family:var(--f-display);font-size:19px;font-weight:400;margin:0 0 7px}
 .empty p{margin:0 0 18px;color:var(--muted);font-size:13.5px}
 .toast{position:fixed;left:50%;bottom:26px;transform:translateX(-50%);background:var(--ink);color:var(--bg);padding:10px 20px;border-radius:999px;font-size:13px;z-index:80;box-shadow:var(--shadow-2);opacity:0;pointer-events:none;transition:opacity .18s}
@@ -634,7 +637,38 @@ function ordered(){
 }
 
 /* ═══ 공통 조각 ══════════════════════════════ */
-const HOUSE_PIC='<svg viewBox="0 0 96 96" fill="none" stroke="currentColor" stroke-width="3.4" stroke-linecap="round" stroke-linejoin="round">'+'<path d="M12 46 48 18l36 28"/>'+'<path d="M20 42v34a3 3 0 0 0 3 3h50a3 3 0 0 0 3-3V42"/>'+'<path d="M40 79V60a3 3 0 0 1 3-3h10a3 3 0 0 1 3 3v19"/>'+'<rect x="28" y="48" width="11" height="11" rx="2.5"/>'+'<rect x="57" y="48" width="11" height="11" rx="2.5"/>'+'<path d="M48 18V7"/><path d="M48 8h11l-3.4 4.6L59 17H48z" fill="currentColor" stroke="none"/>'+'</svg>';
+const HOUSE_PIC='<svg viewBox="0 0 240 152" fill="none" stroke="var(--ink)" stroke-width="2.6" stroke-linejoin="round" stroke-linecap="round" aria-hidden="true">'+
+  /* 구름 */
+  '<path d="M184 40a9 9 0 0 1 0-18 12 12 0 0 1 22-4 12 12 0 0 1 6 22z" fill="var(--surface)"/>'+
+  /* 돋보기 — 집을 찾아다니는 중 */
+  '<path d="M67.5 47.5 78.5 58.5" stroke-width="5.5"/>'+
+  '<circle cx="55" cy="35" r="14.5" fill="var(--surface)"/>'+
+  /* 땅 */
+  '<rect x="5" y="126" width="230" height="17" rx="8.5" fill="var(--mint)"/>'+
+  /* 왼쪽 나무 */
+  '<path d="M15.5 126v-16"/><circle cx="15.5" cy="103" r="11" fill="var(--leaf)"/>'+
+  /* 작은 집 */
+  '<rect x="30" y="96" width="42" height="30" fill="var(--surface)"/>'+
+  '<path d="M24 96 51 73l27 23" fill="var(--leaf)"/>'+
+  '<rect x="34.5" y="101" width="9.5" height="9.5" rx="1.5" fill="var(--mint)"/>'+
+  '<rect x="52" y="110" width="13" height="16" rx="2" fill="var(--sun)"/>'+
+  /* 가운데 집 — 굴뚝을 먼저 그려 지붕이 덮게 한다 */
+  '<path d="M140 74V57h9.5v11" fill="var(--surface)"/>'+
+  '<rect x="92" y="82" width="62" height="44" fill="var(--surface)"/>'+
+  '<path d="M85 82 123 51l38 31" fill="var(--sun)"/>'+
+  '<rect x="98.5" y="90" width="15" height="15" rx="2" fill="var(--mint)"/>'+
+  '<path d="M106 90v15M98.5 97.5h15" stroke-width="2"/>'+
+  '<rect x="132.5" y="90" width="15" height="15" rx="2" fill="var(--mint)"/>'+
+  '<path d="M140 90v15M132.5 97.5h15" stroke-width="2"/>'+
+  '<rect x="113" y="104" width="20" height="22" rx="2.5" fill="var(--surface)"/>'+
+  '<circle cx="128" cy="116" r="1.9" fill="var(--ink)" stroke="none"/>'+
+  /* 오른쪽 집 */
+  '<rect x="174" y="100" width="40" height="26" fill="var(--surface)"/>'+
+  '<path d="M168 100 194 79l26 21" fill="var(--mint)"/>'+
+  '<rect x="184" y="106" width="11" height="11" rx="1.5" fill="var(--leaf)"/>'+
+  /* 오른쪽 나무 */
+  '<path d="M226 126v-14"/><circle cx="226" cy="105" r="9.5" fill="var(--leaf)"/>'+
+'</svg>';
 const STAR='<svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 2.6l2.9 5.9 6.5.95-4.7 4.58 1.11 6.47L12 17.45 6.19 20.5 7.3 14.03 2.6 9.45l6.5-.95z"/></svg>';
 function statusPill(p){ const s=STATUS.find(x=>x.k===p.status)||STATUS[0]; return '<span class="pill s-'+s.k+'">'+s.l+'</span>'; }
 function dealTag(p){ const d=p.dealType==='sale'?'sale':'jeonse'; return '<span class="tag '+d+'">'+(d==='sale'?'매매':'전세')+'</span>'; }
