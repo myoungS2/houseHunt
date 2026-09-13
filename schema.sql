@@ -62,6 +62,7 @@ CREATE TABLE IF NOT EXISTS photos (
   id           TEXT PRIMARY KEY,
   book_id      TEXT NOT NULL,
   uploaded_by  TEXT,
+  storage      TEXT NOT NULL DEFAULT 'db',   -- r2 | db
   object_key   TEXT NOT NULL,
   content_type TEXT,
   size         INTEGER,
@@ -75,4 +76,11 @@ CREATE TABLE IF NOT EXISTS login_attempts (
   count    INTEGER NOT NULL,
   first_at INTEGER NOT NULL,
   until    INTEGER
+);
+
+-- 사진 본체. R2 버킷이 연결돼 있으면 거기에 두고, 없으면 여기에 담습니다.
+-- photos.storage 가 'r2' 인지 'db' 인지로 어디에 있는지 구분합니다.
+CREATE TABLE IF NOT EXISTS photo_blobs (
+  id   TEXT PRIMARY KEY,
+  data BLOB NOT NULL
 );

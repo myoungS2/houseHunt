@@ -19,6 +19,8 @@ const KEY_BYTES    = 32;
 const MIN_PW       = 10;       // 화면에서 막는 최소 길이
 const SESSION_DAYS = 30;
 const MAX_PHOTO    = 6 * 1024 * 1024;
+const MAX_PHOTO_DB = 700 * 1024;   // R2 없이 D1에 담을 때 한 장 크기
+const MAX_PHOTOS_DB = 300;        // R2 없이 D1에 담을 때 장부당 장수
 const MAX_MEMBERS  = 6;        // 한 장부에 들어올 수 있는 사람 수
 const INVITE_DAYS  = 7;        // 초대 링크가 살아 있는 기간
 
@@ -41,7 +43,9 @@ export default {
         const u = await currentUser(req, env);
         if (!u) return json({ error: 'unauthorized', login: '/auth/login' }, 401);
         return json({
-          email: u.email, name: u.name, photos: !!env.PHOTOS, mode: 'password',
+          email: u.email, name: u.name, mode: 'password',
+          photos: true, photoStore: env.PHOTOS ? 'r2' : 'db',
+          photoMax: env.PHOTOS ? MAX_PHOTO : MAX_PHOTO_DB,
           book: u.book, books: await myBooks(env, u.key)
         });
       }
@@ -734,43 +738,73 @@ async function handleApi(req, env, url, u) {
 
   /* ── 사진 ── */
   if (path === '/api/photos' && method === 'POST') {
-    if (!env.PHOTOS) return json({ error: '사진 저장소가 연결되지 않았습니다' }, 501);
     const type = req.headers.get('content-type') || 'image/jpeg';
     if (!/^image\//.test(type)) return json({ error: '이미지만 올릴 수 있습니다' }, 415);
     const buf = await req.arrayBuffer();
     if (!buf.byteLength) return json({ error: '빈 파일입니다' }, 400);
-    if (buf.byteLength > MAX_PHOTO) return json({ error: '사진이 너무 큽니다' }, 413);
+    const cap = env.PHOTOS ? MAX_PHOTO : MAX_PHOTO_DB;
+    if (buf.byteLength > cap) {
+      return json({ error: '사진이 너무 큽니다. ' + Math.round(cap / 1024) + 'KB 아래로 줄여 주세요' }, 413);
+    }
     const id = crypto.randomUUID().replace(/-/g, '');
-    await env.PHOTOS.put(bk + '/' + id, buf, { httpMetadata: { contentType: type } });
-    await env.DB.prepare(
-      'INSERT INTO photos (id, book_id, uploaded_by, object_key, content_type, size, created_at) VALUES (?,?,?,?,?,?,?)'
-    ).bind(id, bk, uk, bk + '/' + id, type, buf.byteLength, nowIso()).run();
+    const at = nowIso();
+
+    if (env.PHOTOS) {
+      await env.PHOTOS.put(bk + '/' + id, buf, { httpMetadata: { contentType: type } });
+      await env.DB.prepare(
+        'INSERT INTO photos (id, book_id, uploaded_by, storage, object_key, content_type, size, created_at) VALUES (?,?,?,?,?,?,?,?)'
+      ).bind(id, bk, uk, 'r2', bk + '/' + id, type, buf.byteLength, at).run();
+    } else {
+      const count = await env.DB.prepare(
+        'SELECT COUNT(*) AS n FROM photos WHERE book_id = ? AND storage = ?').bind(bk, 'db').first();
+      if (Number(count.n) >= MAX_PHOTOS_DB) {
+        return json({ error: '사진은 장부당 ' + MAX_PHOTOS_DB + '장까지입니다. R2를 켜면 제한이 풀립니다' }, 409);
+      }
+      await env.DB.batch([
+        env.DB.prepare('INSERT INTO photo_blobs (id, data) VALUES (?, ?)').bind(id, [...new Uint8Array(buf)]),
+        env.DB.prepare(
+          'INSERT INTO photos (id, book_id, uploaded_by, storage, object_key, content_type, size, created_at) VALUES (?,?,?,?,?,?,?,?)'
+        ).bind(id, bk, uk, 'db', id, type, buf.byteLength, at)
+      ]);
+    }
     return json({ id, url: '/photo/' + id });
   }
 
   const photo = path.match(/^\/photo\/([a-f0-9]{32})$/);
   if (photo && method === 'GET') {
-    if (!env.PHOTOS) return new Response('사진 저장소가 없습니다', { status: 404, headers: baseHeaders() });
     const row = await env.DB.prepare(
-      'SELECT object_key, content_type FROM photos WHERE id = ? AND book_id = ?'
+      'SELECT storage, object_key, content_type FROM photos WHERE id = ? AND book_id = ?'
     ).bind(photo[1], bk).first();
     if (!row) return new Response('없는 사진입니다', { status: 404, headers: baseHeaders() });
-    const obj = await env.PHOTOS.get(row.object_key);
-    if (!obj) return new Response('없는 사진입니다', { status: 404, headers: baseHeaders() });
-    return new Response(obj.body, {
-      headers: Object.assign(baseHeaders(), {
-        'content-type': row.content_type || 'image/jpeg',
-        'cache-control': 'private, max-age=86400',
-        'etag': obj.httpEtag
-      })
+
+    const head = Object.assign(baseHeaders(), {
+      'content-type': row.content_type || 'image/jpeg',
+      'cache-control': 'private, max-age=86400'
     });
+
+    if (row.storage === 'r2') {
+      if (!env.PHOTOS) return new Response('사진 저장소가 없습니다', { status: 404, headers: baseHeaders() });
+      const obj = await env.PHOTOS.get(row.object_key);
+      if (!obj) return new Response('없는 사진입니다', { status: 404, headers: baseHeaders() });
+      head.etag = obj.httpEtag;
+      return new Response(obj.body, { headers: head });
+    }
+
+    const blob = await env.DB.prepare('SELECT data FROM photo_blobs WHERE id = ?').bind(photo[1]).first();
+    if (!blob || !blob.data) return new Response('없는 사진입니다', { status: 404, headers: baseHeaders() });
+    const bytes = blob.data instanceof ArrayBuffer ? new Uint8Array(blob.data) : new Uint8Array(blob.data);
+    return new Response(bytes, { headers: head });
   }
 
   if (photo && method === 'DELETE') {
     const row = await env.DB.prepare(
-      'SELECT object_key FROM photos WHERE id = ? AND book_id = ?').bind(photo[1], bk).first();
-    if (row && env.PHOTOS) await env.PHOTOS.delete(row.object_key);
-    await env.DB.prepare('DELETE FROM photos WHERE id = ? AND book_id = ?').bind(photo[1], bk).run();
+      'SELECT storage, object_key FROM photos WHERE id = ? AND book_id = ?').bind(photo[1], bk).first();
+    if (!row) return json({ ok: true });
+    if (row.storage === 'r2' && env.PHOTOS) await env.PHOTOS.delete(row.object_key);
+    await env.DB.batch([
+      env.DB.prepare('DELETE FROM photo_blobs WHERE id = ?').bind(photo[1]),
+      env.DB.prepare('DELETE FROM photos WHERE id = ? AND book_id = ?').bind(photo[1], bk)
+    ]);
     return json({ ok: true });
   }
 

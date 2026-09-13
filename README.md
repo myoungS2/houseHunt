@@ -18,10 +18,23 @@ Cloudflare Worker에 올리면 이메일과 비밀번호로 로그인하고, 사
 | D1 `house-hunt` | 만들어짐, 테이블 5개 적용 |
 | 세션 열쇠·가입 코드 | secret으로 등록됨 |
 | 장부 함께 쓰기 | 적용됨 (migrations/001) |
-| R2 사진 저장소 | **아직 안 켬** |
+| 사진 | 됨 (D1에 담김) |
+| R2 사진 저장소 | 안 켬 — 선택 사항 |
 
-사진을 쓰려면 Cloudflare 대시보드에서 R2를 먼저 켠 뒤, `wrangler.toml`의
-`[[r2_buckets]]` 세 줄 주석을 풀고 아래를 실행하세요.
+### 사진은 어디에 담기나
+
+R2 버킷이 연결돼 있으면 거기에, 없으면 D1에 담습니다. 지금은 D1 쪽으로 돕니다.
+앱이 알아서 한 장을 긴 변 1280px로 줄여 올리고, 그래도 크면 화질을 낮춥니다.
+
+| | R2 있을 때 | 지금 (D1) |
+|---|---|---|
+| 한 장 크기 | 6MB | 700KB |
+| 장부당 장수 | 제한 없음 | 300장 |
+| 줄이는 크기 | 긴 변 1600px | 긴 변 1280px |
+
+임장 사진 몇십 장이면 D1으로 충분합니다. 더 많이 쌓을 생각이면 대시보드에서
+R2를 켠 뒤 `wrangler.toml`의 `[[r2_buckets]]` 세 줄 주석을 풀고 아래를 실행하세요.
+이미 올린 사진은 D1에 그대로 남고, 새 사진부터 R2로 갑니다.
 
 ```bash
 npx wrangler r2 bucket create house-hunt-photos
@@ -167,7 +180,7 @@ node tools/reset-password.mjs 배우자@gmail.com "임시비밀번호1234"
 
 `properties`의 기본키가 `(book_id, id)`라 다른 장부가 같은 매물 id를 써도 서로 안 덮입니다.
 
-사진은 `/photo/<id>`로 조회할 때 장부를 확인합니다. 다른 장부의 사진 id를 넣으면 404가 납니다.
+사진은 `/photo/<id>`로 조회할 때 장부를 확인합니다. 다른 장부의 사진 id를 넣으면 404가 나고, 로그인하지 않으면 401이 납니다. 같은 장부에 들어온 사람끼리는 서로 올린 사진이 보입니다.
 
 초대 링크의 토큰은 무작위 24바이트이고, 한 번 쓰거나 기한이 지나면 안 열립니다. 주인이 아니면 만들 수 없습니다.
 
@@ -197,5 +210,6 @@ npx wrangler dev --local
 | `wrangler.toml` | 바인딩과 설정 |
 | `tools/reset-password.mjs` | 비밀번호 초기화 SQL 생성 |
 | `migrations/001-shared-books.sql` | 사람별 데이터를 장부 단위로 옮기는 한 번짜리 스크립트 |
+| `migrations/002-photos-in-db.sql` | R2 없이 사진을 담을 자리를 만드는 스크립트 |
 
 `tools/reset-password.mjs`의 반복 횟수는 `src/worker.js`의 `CLIENT_ITER`, `SERVER_ITER`와 같아야 합니다. 한쪽만 바꾸면 기존 비밀번호가 전부 안 맞게 됩니다.

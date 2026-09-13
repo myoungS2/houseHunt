@@ -529,7 +529,7 @@ const state = {
 };
 
 const store = {
-  mode:'local', db:null, assets:null, user:null, photosOk:false,
+  mode:'local', db:null, assets:null, user:null, photosOk:false, photoStore:'', photoMax:0,
 
   loadLocal(){
     try{
@@ -561,6 +561,7 @@ const store = {
       if(r.ok && (r.headers.get('content-type')||'').indexOf('json')>=0){
         this.user=await r.json(); this.mode='api'; this.photosOk=!!this.user.photos;
         state.book=this.user.book||null; state.books=this.user.books||[];
+        this.photoStore=this.user.photoStore||''; this.photoMax=this.user.photoMax||0;
         this.clearLocal(); state.props={};
         try{ await this.pull(); }catch(e){ toast('내 매물을 불러오지 못했습니다'); }
         settled(); paintStorage(); render();
@@ -1119,7 +1120,9 @@ function formHTML(d){
     (canPhoto
       ? '<div class="photoRow" id="photoRow">'+shots+'<button type="button" class="addPhoto" id="pickPhoto">＋ 사진</button></div>'+
         '<input type="file" id="photoInput" accept="image/*" multiple hidden>'
-      : '<p class="desc" style="margin:0">이 화면에서는 사진을 올릴 수 없습니다. 발행된 주소에서 열면 사용할 수 있습니다.</p>')+
+      : '<p class="desc" style="margin:0">이 화면에서는 사진을 올릴 수 없습니다. 올려둔 주소에서 열면 사용할 수 있습니다.</p>')+
+    (canPhoto && store.mode==='api' && store.photoStore==='db'
+      ? '<p class="byline" style="margin-top:8px">사진은 장부에 함께 담깁니다. 한 장부에 300장까지 올릴 수 있습니다.</p>' : '')+
     '</fieldset>';
   return groups+rate+photo;
 }
@@ -1203,7 +1206,7 @@ function saveSheet(){
 }
 
 /* 사진 */
-function resizeImage(file,max){
+function resizeImage(file,max,quality){
   return new Promise((res,rej)=>{
     const url=URL.createObjectURL(file), img=new Image();
     img.onload=()=>{
@@ -1212,7 +1215,7 @@ function resizeImage(file,max){
       c.width=Math.max(1,Math.round(img.width*sc)); c.height=Math.max(1,Math.round(img.height*sc));
       c.getContext('2d').drawImage(img,0,0,c.width,c.height);
       URL.revokeObjectURL(url);
-      c.toBlob(b=>b?res(b):rej(new Error('변환 실패')),'image/jpeg',0.82);
+      c.toBlob(b=>b?res(b):rej(new Error('변환 실패')),'image/jpeg',quality||0.82);
     };
     img.onerror=()=>{ URL.revokeObjectURL(url); rej(new Error('읽기 실패')); };
     img.src=url;
@@ -1222,7 +1225,17 @@ function blobToDataURL(b){ return new Promise((res,rej)=>{ const r=new FileReade
 async function handleFiles(files){
   for(let i=0;i<files.length;i++){
     try{
-      const blob=await resizeImage(files[i], store.assets?1600:900);
+      const wide = store.mode==='api' ? (store.photoStore==='r2'?1600:1280)
+                 : (store.assets?1600:900);
+      let blob=await resizeImage(files[i], wide);
+      /* 서버가 받을 수 있는 크기를 넘으면 화질을 낮춰 다시 줄인다 */
+      if(store.mode==='api' && store.photoMax){
+        let q=0.72;
+        while(blob.size>store.photoMax && q>=0.45){
+          blob=await resizeImage(files[i], Math.round(wide*0.8), q); q-=0.12;
+        }
+        if(blob.size>store.photoMax){ toast('사진이 너무 큽니다'); continue; }
+      }
       let ph;
       if(store.mode==='api'){
         const r=await fetch('/api/photos',{method:'POST',credentials:'same-origin',
