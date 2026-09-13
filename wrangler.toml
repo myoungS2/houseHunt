@@ -1,0 +1,27 @@
+name = "house-hunt"
+main = "src/worker.js"
+compatibility_date = "2025-01-01"
+
+# index.html을 문자열로 번들에 넣어 워커가 직접 서빙합니다.
+rules = [{ type = "Text", globs = ["**/*.html"], fallthrough = true }]
+
+[[d1_databases]]
+binding = "DB"
+database_name = "house-hunt"
+database_id = "여기에-d1-database-id를-넣으세요"
+
+# 사진을 안 쓰려면 이 블록을 통째로 지우세요. 앱이 알아서 업로드 버튼을 숨깁니다.
+[[r2_buckets]]
+binding = "PHOTOS"
+bucket_name = "house-hunt-photos"
+
+[vars]
+# 가입을 이메일로도 못 박고 싶을 때. 비우거나 지우면 가입 코드만으로 가입됩니다.
+# ALLOWED_EMAILS = "나@gmail.com,배우자@gmail.com"
+
+# 로컬에서 로그인 없이 테스트할 때만. 배포한 주소에서는 절대 켜지 마세요.
+# ALLOW_OPEN = "1"
+
+# 아래 둘은 여기 적지 말고 secret으로 넣으세요. 없으면 가입과 로그인이 아예 안 됩니다.
+#   npx wrangler secret put SIGNUP_CODE      가입 코드. 같이 쓸 사람에게만 알려줍니다.
+#   npx wrangler secret put SESSION_SECRET   openssl rand -base64 48 로 뽑은 값

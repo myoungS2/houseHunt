@@ -1,0 +1,1164 @@
+<title>집 고르기 장부</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Hahmlet:wght@500;600;700&family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans+KR:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#EDF1EF; --surface:#FFFFFF; --surface-2:#F5F8F7; --surface-3:#E9EEEC;
+  --ink:#152220; --ink-2:#3F5350; --muted:#71847F;
+  --line:#D8E0DD; --line-2:#C0CCC8;
+  --accent:#14594A; --accent-2:#1E7A64; --accent-soft:#DFEDE8; --accent-ink:#0B3B31;
+  --good:#2C7A52; --good-soft:#E1F0E7;
+  --bad:#A63F29; --bad-soft:#F7E7E2;
+  --warn:#8A6310; --warn-soft:#F5EBD8;
+  --info:#2A5C86; --info-soft:#E2EDF6;
+  --shadow-1:0 1px 2px rgba(14,36,31,.07);
+  --shadow-2:0 2px 6px rgba(14,36,31,.07), 0 16px 36px -20px rgba(14,36,31,.35);
+  --f-display:'Hahmlet','Noto Serif KR',Georgia,serif;
+  --f-sans:'IBM Plex Sans KR','Apple SD Gothic Neo','Malgun Gothic',system-ui,sans-serif;
+  --f-mono:'IBM Plex Mono',ui-monospace,SFMono-Regular,Menlo,monospace;
+  --r:10px; --r-s:7px;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --bg:#101614; --surface:#18201E; --surface-2:#1E2825; --surface-3:#253130;
+    --ink:#E9EFEC; --ink-2:#B5C4C0; --muted:#879995;
+    --line:#2B3735; --line-2:#3C4A47;
+    --accent:#5FBFA4; --accent-2:#7ACFB6; --accent-soft:#1A302B; --accent-ink:#A9DFCE;
+    --good:#63BE8D; --good-soft:#1A2E24;
+    --bad:#E28B72; --bad-soft:#33211C;
+    --warn:#D3A75A; --warn-soft:#2F2717;
+    --info:#79B2DE; --info-soft:#182734;
+    --shadow-1:0 1px 2px rgba(0,0,0,.4);
+    --shadow-2:0 2px 6px rgba(0,0,0,.35), 0 18px 40px -22px rgba(0,0,0,.8);
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#101614; --surface:#18201E; --surface-2:#1E2825; --surface-3:#253130;
+  --ink:#E9EFEC; --ink-2:#B5C4C0; --muted:#879995;
+  --line:#2B3735; --line-2:#3C4A47;
+  --accent:#5FBFA4; --accent-2:#7ACFB6; --accent-soft:#1A302B; --accent-ink:#A9DFCE;
+  --good:#63BE8D; --good-soft:#1A2E24;
+  --bad:#E28B72; --bad-soft:#33211C;
+  --warn:#D3A75A; --warn-soft:#2F2717;
+  --info:#79B2DE; --info-soft:#182734;
+  --shadow-1:0 1px 2px rgba(0,0,0,.4);
+  --shadow-2:0 2px 6px rgba(0,0,0,.35), 0 18px 40px -22px rgba(0,0,0,.8);
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:var(--f-sans);font-size:15px;line-height:1.55;-webkit-text-size-adjust:100%}
+button,input,select,textarea{font:inherit;color:inherit}
+:focus-visible{outline:2px solid var(--accent-2);outline-offset:2px;border-radius:4px}
+@media (prefers-reduced-motion: reduce){*{animation-duration:.01ms !important;transition-duration:.01ms !important}}
+
+.wrap{max-width:1280px;margin:0 auto;padding:0 18px 80px}
+
+/* ── header ─────────────────────────────── */
+.top{position:sticky;top:0;z-index:40;background:color-mix(in srgb,var(--bg) 88%,transparent);backdrop-filter:blur(10px);border-bottom:1px solid var(--line)}
+.top-in{max-width:1280px;margin:0 auto;padding:12px 18px;display:flex;align-items:center;gap:18px;flex-wrap:wrap}
+.brand{display:flex;align-items:center;gap:10px;margin-right:auto}
+.mark{width:34px;height:34px;border-radius:8px;background:var(--accent);color:#fff;display:grid;place-items:center;font-family:var(--f-display);font-weight:700;font-size:17px;flex:none}
+:root[data-theme="dark"] .mark,:root:not([data-theme="light"]) .mark{color:#0F1A17}
+@media (prefers-color-scheme: light){:root:not([data-theme="dark"]) .mark{color:#fff}}
+h1{font-family:var(--f-display);font-size:18px;font-weight:600;margin:0;letter-spacing:-.01em;line-height:1.2}
+.brand p{margin:1px 0 0;font-size:11.5px;color:var(--muted);letter-spacing:.02em}
+.views{display:flex;gap:2px;background:var(--surface-3);padding:3px;border-radius:9px}
+.views button{border:0;background:transparent;padding:6px 13px;border-radius:6px;font-size:13.5px;font-weight:500;color:var(--ink-2);cursor:pointer}
+.views button[aria-pressed="true"]{background:var(--surface);color:var(--ink);box-shadow:var(--shadow-1)}
+.tools{display:flex;align-items:center;gap:10px}
+.storage{font-size:11.5px;color:var(--muted);display:flex;align-items:center;gap:5px;white-space:nowrap}
+.dot{width:6px;height:6px;border-radius:50%;background:var(--muted);flex:none}
+.dot.on{background:var(--good)}
+.btn{border:1px solid var(--line-2);background:var(--surface);padding:7px 14px;border-radius:8px;font-size:13.5px;font-weight:500;cursor:pointer;white-space:nowrap}
+.btn:hover{border-color:var(--accent);color:var(--accent)}
+.btn.primary{background:var(--accent);border-color:var(--accent);color:#fff}
+:root[data-theme="dark"] .btn.primary{color:#0F1A17}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]) .btn.primary{color:#0F1A17}}
+.btn.primary:hover{background:var(--accent-2);border-color:var(--accent-2)}
+.btn.ghost{background:transparent;border-color:transparent;color:var(--muted);padding:6px 9px}
+.btn.ghost:hover{color:var(--accent);background:var(--surface-2)}
+.btn.sm{padding:4px 9px;font-size:12.5px}
+.btn.danger:hover{border-color:var(--bad);color:var(--bad)}
+
+/* ── summary strip ──────────────────────── */
+.strip{display:flex;gap:0;flex-wrap:wrap;margin:18px 0;border:1px solid var(--line);border-radius:var(--r);background:var(--surface);overflow:hidden}
+.stat{flex:1 1 150px;padding:11px 16px;border-right:1px solid var(--line);min-width:0}
+.stat:last-child{border-right:0}
+.stat .k{font-size:10.5px;letter-spacing:.09em;text-transform:uppercase;color:var(--muted);font-weight:500}
+.stat .v{font-family:var(--f-mono);font-size:18px;font-weight:500;margin-top:1px;font-variant-numeric:tabular-nums;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.stat .v small{font-family:var(--f-sans);font-size:12px;color:var(--muted);font-weight:400}
+.stat .v.name{font-family:var(--f-sans);font-size:15px;font-weight:500}
+
+/* ── notice ─────────────────────────────── */
+.notice{display:flex;align-items:center;gap:10px;padding:9px 14px;border:1px dashed var(--line-2);border-radius:var(--r);background:var(--surface-2);font-size:13px;color:var(--ink-2);margin-bottom:14px;flex-wrap:wrap}
+.notice b{font-weight:600;color:var(--ink)}
+.notice .btn{margin-left:auto}
+
+/* ── toolbar ────────────────────────────── */
+.bar{display:flex;align-items:center;gap:10px;margin-bottom:12px;flex-wrap:wrap}
+.seg{display:flex;border:1px solid var(--line-2);border-radius:8px;overflow:hidden}
+.seg button{border:0;background:var(--surface);padding:6px 12px;font-size:13px;cursor:pointer;color:var(--ink-2);border-right:1px solid var(--line-2)}
+.seg button:last-child{border-right:0}
+.seg button[aria-pressed="true"]{background:var(--accent-soft);color:var(--accent-ink);font-weight:600}
+.bar .hint{font-size:12.5px;color:var(--muted)}
+.bar .right{margin-left:auto;display:flex;gap:8px;align-items:center}
+
+/* ── table ──────────────────────────────── */
+.tablewrap{overflow-x:auto;border:1px solid var(--line);border-radius:var(--r);background:var(--surface);box-shadow:var(--shadow-1)}
+table.grid{border-collapse:separate;border-spacing:0;width:100%;min-width:980px;font-size:13.5px}
+table.grid th{position:sticky;top:0;z-index:2;background:var(--surface-2);border-bottom:1px solid var(--line-2);padding:9px 12px;text-align:left;font-size:11px;font-weight:600;letter-spacing:.07em;text-transform:uppercase;color:var(--muted);white-space:nowrap;user-select:none}
+table.grid th.sortable{cursor:pointer}
+table.grid th.sortable:hover{color:var(--accent)}
+table.grid th .ar{color:var(--accent);margin-left:3px}
+table.grid td{padding:9px 12px;border-bottom:1px solid var(--line);vertical-align:middle;white-space:nowrap}
+table.grid tbody tr:last-child td{border-bottom:0}
+table.grid tbody tr:hover td{background:var(--surface-2)}
+table.grid tr.dropped td{opacity:.45}
+table.grid tr.picked td{background:var(--accent-soft)}
+.c-main{position:sticky;left:0;z-index:1;background:var(--surface);border-right:1px solid var(--line);min-width:230px;max-width:260px}
+table.grid th.c-main{z-index:3;background:var(--surface-2)}
+tbody tr:hover .c-main{background:var(--surface-2)}
+tr.picked .c-main{background:var(--accent-soft)}
+.mainCell{display:flex;align-items:center;gap:9px}
+.rankno{font-family:var(--f-mono);font-size:12px;font-weight:600;color:var(--muted);width:18px;text-align:right;flex:none;font-variant-numeric:tabular-nums}
+.movebtns{display:flex;flex-direction:column;gap:1px;flex:none}
+.movebtns button{border:1px solid var(--line-2);background:var(--surface);width:20px;height:14px;line-height:1;padding:0;font-size:8px;cursor:pointer;color:var(--ink-2);border-radius:3px}
+.movebtns button:hover:not(:disabled){border-color:var(--accent);color:var(--accent)}
+.movebtns button:disabled{opacity:.3;cursor:default}
+.namebox{min-width:0}
+.namebox .nm{font-weight:500;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;cursor:pointer}
+.namebox .nm:hover{color:var(--accent);text-decoration:underline}
+.namebox .ad{font-size:11.5px;color:var(--muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.num{font-family:var(--f-mono);font-variant-numeric:tabular-nums;text-align:right}
+td.num{text-align:right}
+th.num{text-align:right}
+.sub{font-size:11px;color:var(--muted)}
+
+/* pills */
+.pill{display:inline-block;padding:2px 8px;border-radius:20px;font-size:11.5px;font-weight:600;letter-spacing:.01em;white-space:nowrap}
+.pill.s-interest{background:var(--surface-3);color:var(--ink-2)}
+.pill.s-planned{background:var(--info-soft);color:var(--info)}
+.pill.s-visited{background:var(--accent-soft);color:var(--accent-ink)}
+.pill.s-shortlist{background:var(--good-soft);color:var(--good)}
+.pill.s-dropped{background:var(--bad-soft);color:var(--bad)}
+.tag{display:inline-block;padding:1px 7px;border:1px solid var(--line-2);border-radius:5px;font-size:11.5px;color:var(--ink-2)}
+.tag.sale{border-color:var(--warn);color:var(--warn);background:var(--warn-soft)}
+.tag.jeonse{border-color:var(--info);color:var(--info);background:var(--info-soft)}
+
+/* score */
+.score{display:flex;align-items:center;gap:7px;justify-content:flex-end}
+.score .n{font-family:var(--f-mono);font-size:13px;font-weight:600;font-variant-numeric:tabular-nums}
+.meter{width:42px;height:5px;border-radius:3px;background:var(--surface-3);overflow:hidden;flex:none}
+.meter i{display:block;height:100%;background:var(--accent);border-radius:3px}
+.pick{width:15px;height:15px;accent-color:var(--accent);cursor:pointer;flex:none}
+
+/* ── cards ──────────────────────────────── */
+.cards{display:grid;grid-template-columns:repeat(auto-fill,minmax(320px,1fr));gap:14px}
+.card{border:1px solid var(--line);border-radius:var(--r);background:var(--surface);box-shadow:var(--shadow-1);display:flex;flex-direction:column;overflow:hidden}
+.card.dropped{opacity:.55}
+.card-hd{padding:13px 15px 11px;border-bottom:1px solid var(--line);display:flex;gap:10px;align-items:flex-start}
+.card-hd .t{font-family:var(--f-display);font-size:16px;font-weight:600;line-height:1.3;margin:0 0 3px;cursor:pointer}
+.card-hd .t:hover{color:var(--accent)}
+.card-hd .meta{font-size:11.5px;color:var(--muted)}
+.card-key{display:grid;grid-template-columns:1.3fr 1fr .8fr;border-bottom:1px solid var(--line)}
+.card-key div{padding:9px 13px;border-right:1px solid var(--line);min-width:0}
+.card-key div:last-child{border-right:0}
+.card-key .k{font-size:10px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);font-weight:500}
+.card-key .v{font-family:var(--f-mono);font-size:13.5px;font-variant-numeric:tabular-nums;margin-top:1px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.card-body{padding:12px 15px;display:flex;flex-direction:column;gap:10px;flex:1}
+.kv{display:flex;flex-wrap:wrap;gap:5px 14px;font-size:12.5px;color:var(--ink-2)}
+.kv span b{color:var(--muted);font-weight:500;margin-right:4px}
+.pc{font-size:13px;line-height:1.5;display:flex;gap:8px}
+.pc .lb{flex:none;width:17px;height:17px;border-radius:50%;display:grid;place-items:center;font-size:11px;font-weight:700;margin-top:1px}
+.pc.good .lb{background:var(--good-soft);color:var(--good)}
+.pc.bad .lb{background:var(--bad-soft);color:var(--bad)}
+.shots{display:flex;gap:6px;overflow-x:auto;padding-bottom:2px}
+.shots img{width:74px;height:56px;object-fit:cover;border-radius:6px;border:1px solid var(--line);flex:none;cursor:zoom-in}
+.card-ft{padding:9px 15px;border-top:1px solid var(--line);display:flex;align-items:center;gap:9px;background:var(--surface-2)}
+.card-ft .score{margin-left:auto}
+
+/* ── compare ────────────────────────────── */
+.cmpwrap{overflow-x:auto;border:1px solid var(--line);border-radius:var(--r);background:var(--surface);box-shadow:var(--shadow-1)}
+table.cmp{border-collapse:separate;border-spacing:0;width:100%;font-size:13.5px}
+table.cmp th,table.cmp td{padding:9px 14px;border-bottom:1px solid var(--line);text-align:left;vertical-align:top}
+table.cmp thead th{position:sticky;top:0;background:var(--surface-2);border-bottom:1px solid var(--line-2);z-index:2}
+table.cmp thead th.lbl{z-index:3}
+table.cmp .lbl{position:sticky;left:0;background:var(--surface);border-right:1px solid var(--line);font-size:11.5px;color:var(--muted);font-weight:500;white-space:nowrap;width:130px;z-index:1}
+table.cmp thead .lbl{background:var(--surface-2)}
+table.cmp tbody tr:hover td{background:var(--surface-2)}
+table.cmp tbody tr:hover .lbl{background:var(--surface-2)}
+table.cmp .hd{font-family:var(--f-display);font-size:15px;font-weight:600}
+table.cmp .best{background:var(--good-soft) !important;color:var(--good);font-weight:600}
+table.cmp .worst{background:var(--bad-soft) !important;color:var(--bad)}
+table.cmp tr.sect td{background:var(--surface-3);font-size:10.5px;letter-spacing:.09em;text-transform:uppercase;color:var(--muted);font-weight:600;padding:6px 14px}
+table.cmp .val{font-family:var(--f-mono);font-variant-numeric:tabular-nums}
+table.cmp .long{white-space:pre-wrap;font-size:12.5px;line-height:1.5;min-width:180px}
+
+/* ── settings ───────────────────────────── */
+.panel{border:1px solid var(--line);border-radius:var(--r);background:var(--surface);padding:18px 20px;margin-bottom:14px;box-shadow:var(--shadow-1)}
+.panel h2{font-family:var(--f-display);font-size:16px;font-weight:600;margin:0 0 4px}
+.panel .desc{font-size:12.5px;color:var(--muted);margin:0 0 14px;max-width:62ch}
+.rateRow{display:flex;align-items:center;gap:10px;padding:7px 0;border-bottom:1px solid var(--line);flex-wrap:wrap}
+.rateRow:last-of-type{border-bottom:0}
+.rateRow input[type=text]{flex:1;min-width:110px}
+.wsel{display:flex;gap:3px}
+.wsel button{border:1px solid var(--line-2);background:var(--surface);width:26px;height:26px;border-radius:6px;font-size:12px;cursor:pointer;font-family:var(--f-mono)}
+.wsel button[aria-pressed="true"]{background:var(--accent);border-color:var(--accent);color:#fff}
+:root[data-theme="dark"] .wsel button[aria-pressed="true"]{color:#0F1A17}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]) .wsel button[aria-pressed="true"]{color:#0F1A17}}
+.field{display:flex;flex-direction:column;gap:4px}
+.field label{font-size:11.5px;color:var(--muted);font-weight:500}
+input[type=text],input[type=number],input[type=date],input[type=url],input[type=tel],select,textarea{
+  border:1px solid var(--line-2);background:var(--surface);border-radius:var(--r-s);padding:7px 10px;font-size:13.5px;width:100%;font-family:inherit}
+input[type=number]{font-family:var(--f-mono);font-variant-numeric:tabular-nums}
+textarea{resize:vertical;min-height:62px;line-height:1.5}
+input:focus,select:focus,textarea:focus{border-color:var(--accent);outline:none;box-shadow:0 0 0 3px var(--accent-soft)}
+.inline{display:flex;gap:14px;flex-wrap:wrap}
+.inline .field{max-width:180px}
+
+/* ── sheet / form ───────────────────────── */
+.scrim{position:fixed;inset:0;background:rgba(10,22,19,.5);z-index:60;display:none}
+.scrim.open{display:block}
+.sheet{position:fixed;z-index:61;background:var(--bg);display:none;flex-direction:column}
+.sheet.open{display:flex}
+@media (min-width:761px){
+  .sheet{top:34px;bottom:34px;left:50%;transform:translateX(-50%);width:min(760px,94vw);border-radius:14px;box-shadow:var(--shadow-2);overflow:hidden;border:1px solid var(--line)}
+}
+@media (max-width:760px){ .sheet{inset:0} }
+.sheet-hd{display:flex;align-items:center;gap:10px;padding:12px 16px;border-bottom:1px solid var(--line);background:var(--surface)}
+.sheet-hd h2{font-family:var(--f-display);font-size:16px;font-weight:600;margin:0;margin-right:auto}
+.sheet-bd{overflow-y:auto;padding:16px;flex:1;-webkit-overflow-scrolling:touch}
+.sheet-ft{padding:11px 16px;border-top:1px solid var(--line);background:var(--surface);display:flex;gap:9px;align-items:center}
+.sheet-ft .btn.primary{margin-left:auto}
+fieldset{border:0;padding:0;margin:0 0 20px}
+legend{font-size:10.5px;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);font-weight:600;padding:0 0 8px;width:100%;border-bottom:1px solid var(--line);margin-bottom:12px}
+.fgrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:12px}
+.fgrid .full{grid-column:1/-1}
+.unit{position:relative}
+.unit .u{position:absolute;right:10px;top:50%;transform:translateY(-50%);font-size:11.5px;color:var(--muted);pointer-events:none}
+.unit input{padding-right:44px}
+.rateGrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:9px 18px}
+.rateItem{display:flex;align-items:center;gap:9px}
+.rateItem .rl{font-size:13px;flex:1;min-width:0}
+.rateItem .rw{font-size:10.5px;color:var(--muted);font-family:var(--f-mono)}
+.stars{display:flex;gap:3px;flex:none}
+.stars button{border:0;background:transparent;padding:2px;cursor:pointer;line-height:0;color:var(--line-2)}
+.stars button.on{color:var(--accent)}
+.stars button:hover{color:var(--accent-2)}
+.stars svg{width:17px;height:17px;display:block}
+.photoRow{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+.photoRow figure{margin:0;position:relative}
+.photoRow img{width:88px;height:66px;object-fit:cover;border-radius:7px;border:1px solid var(--line);display:block}
+.photoRow .rm{position:absolute;top:-6px;right:-6px;width:20px;height:20px;border-radius:50%;border:1px solid var(--line-2);background:var(--surface);cursor:pointer;font-size:11px;line-height:1;padding:0;display:grid;place-items:center}
+.photoRow .rm:hover{border-color:var(--bad);color:var(--bad)}
+.addPhoto{width:88px;height:66px;border:1px dashed var(--line-2);border-radius:7px;background:var(--surface-2);cursor:pointer;display:grid;place-items:center;font-size:11.5px;color:var(--muted)}
+.addPhoto:hover{border-color:var(--accent);color:var(--accent)}
+
+/* ── misc ───────────────────────────────── */
+.empty{text-align:center;padding:64px 20px;border:1px dashed var(--line-2);border-radius:var(--r);background:var(--surface-2)}
+.empty h3{font-family:var(--f-display);font-size:17px;font-weight:600;margin:0 0 6px}
+.empty p{margin:0 0 16px;color:var(--muted);font-size:13.5px}
+.toast{position:fixed;left:50%;bottom:26px;transform:translateX(-50%);background:var(--ink);color:var(--bg);padding:9px 17px;border-radius:8px;font-size:13px;z-index:80;box-shadow:var(--shadow-2);opacity:0;pointer-events:none;transition:opacity .18s}
+.toast.show{opacity:1}
+.lightbox{position:fixed;inset:0;background:rgba(8,18,16,.9);z-index:90;display:none;place-items:center;padding:24px;cursor:zoom-out}
+.lightbox.open{display:grid}
+.lightbox img{max-width:100%;max-height:100%;border-radius:8px}
+@media (max-width:760px){
+  .wrap{padding:0 12px 72px}
+  .top-in{padding:10px 12px;gap:10px}
+  .brand p{display:none}
+  .views{order:3;width:100%}
+  .views button{flex:1}
+  .tools .storage{display:none}
+  .strip{margin:14px 0}
+  .stat{flex:1 1 50%;border-bottom:1px solid var(--line)}
+  .stat:nth-child(2n){border-right:0}
+  .stat:nth-last-child(-n+2){border-bottom:0}
+}
+</style>
+
+<header class="top">
+  <div class="top-in">
+    <div class="brand">
+      <span class="mark">집</span>
+      <div>
+        <h1>집 고르기 장부</h1>
+        <p>전세 · 매매 후보 비교</p>
+      </div>
+    </div>
+    <nav class="views" id="views" aria-label="화면 전환">
+      <button data-view="table" aria-pressed="true">표</button>
+      <button data-view="cards" aria-pressed="false">카드</button>
+      <button data-view="compare" aria-pressed="false">비교</button>
+      <button data-view="settings" aria-pressed="false">설정</button>
+    </nav>
+    <div class="tools">
+      <span class="storage" id="storage"><span class="dot"></span><span id="storageText">저장 위치 확인 중</span></span>
+      <button class="btn primary" id="addBtn">+ 매물 추가</button>
+    </div>
+  </div>
+</header>
+
+<main class="wrap">
+  <section class="strip" id="strip"></section>
+  <div id="notice"></div>
+  <div id="view"></div>
+</main>
+
+<div class="scrim" id="scrim"></div>
+<section class="sheet" id="sheet" role="dialog" aria-modal="true" aria-labelledby="sheetTitle">
+  <div class="sheet-hd">
+    <h2 id="sheetTitle">매물 추가</h2>
+    <button class="btn ghost" id="sheetClose" aria-label="닫기">닫기</button>
+  </div>
+  <div class="sheet-bd" id="sheetBody"></div>
+  <div class="sheet-ft">
+    <button class="btn danger" id="sheetDelete">삭제</button>
+    <button class="btn primary" id="sheetSave">저장</button>
+  </div>
+</section>
+
+<div class="lightbox" id="lightbox"><img alt="매물 사진 크게 보기" id="lightboxImg"></div>
+<div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+<script>
+(function(){
+'use strict';
+
+/* ═══ 기본 정의 ═══════════════════════════════ */
+const STATUS = [
+  {k:'interest',  l:'관심'},
+  {k:'planned',   l:'방문 예정'},
+  {k:'visited',   l:'방문 완료'},
+  {k:'shortlist', l:'계약 후보'},
+  {k:'dropped',   l:'탈락'}
+];
+const DEAL = [{k:'jeonse',l:'전세'},{k:'sale',l:'매매'}];
+const FACING = ['남','남동','남서','동','서','북동','북서','북'];
+const PYEONG = 3.305785;
+
+const DEFAULT_RATINGS = [
+  {key:'light',  label:'채광',        weight:3},
+  {key:'noise',  label:'소음',        weight:3},
+  {key:'mold',   label:'곰팡이 · 결로', weight:3},
+  {key:'water',  label:'수압',        weight:2},
+  {key:'storage',label:'수납',        weight:2},
+  {key:'manage', label:'관리 상태',    weight:2},
+  {key:'around', label:'주변 환경',    weight:2},
+  {key:'kitchen',label:'주방',        weight:1},
+  {key:'bath',   label:'욕실',        weight:1}
+];
+const DEFAULT_SETTINGS = {loanRate:4.0, equityRate:2.5, ratings:DEFAULT_RATINGS};
+
+const FORM = [
+  {g:'기본', f:[
+    {k:'name',    l:'이름',      t:'text', full:true, ph:'상도동 e편한세상 7층'},
+    {k:'status',  l:'상태',      t:'select', opts:STATUS.map(s=>[s.k,s.l])},
+    {k:'dealType',l:'거래 형태',  t:'select', opts:DEAL.map(d=>[d.k,d.l])},
+    {k:'address', l:'주소',      t:'text', full:true},
+    {k:'url',     l:'매물 링크',  t:'url',  full:true, ph:'https://'}
+  ]},
+  {g:'금액', f:[
+    {k:'price',      l:'보증금 · 매매가', t:'num', u:'만원'},
+    {k:'fee',        l:'관리비',        t:'num', u:'만원'},
+    {k:'loan',       l:'대출 예정액',    t:'num', u:'만원'},
+    {k:'loanRate',   l:'대출 금리',      t:'num', u:'%', ph:'비우면 설정값'},
+    {k:'feeIncludes',l:'관리비 포함 항목', t:'text', full:true, ph:'수도, 인터넷, 청소'}
+  ]},
+  {g:'일정', f:[
+    {k:'moveIn',   l:'입주 가능일', t:'date'},
+    {k:'term',     l:'계약 기간',   t:'text', ph:'2년'},
+    {k:'tenant',   l:'현 세입자',   t:'select', opts:[['','—'],['none','공실'],['live','거주 중'],['unknown','모름']]}
+  ]},
+  {g:'공간', f:[
+    {k:'area',     l:'전용 면적', t:'num', u:'m²'},
+    {k:'rooms',    l:'방',       t:'num', u:'개'},
+    {k:'baths',    l:'욕실',     t:'num', u:'개'},
+    {k:'floor',    l:'층',       t:'text', ph:'7/15'},
+    {k:'facing',   l:'향',       t:'select', opts:[['','—']].concat(FACING.map(f=>[f,f+'향']))},
+    {k:'elevator', l:'엘리베이터', t:'select', opts:[['','—'],['y','있음'],['n','없음']]},
+    {k:'parking',  l:'주차',     t:'text', ph:'세대당 1대'}
+  ]},
+  {g:'입지', f:[
+    {k:'station', l:'가까운 역',    t:'text'},
+    {k:'walk',    l:'역까지 도보',  t:'num', u:'분'},
+    {k:'commute', l:'출퇴근 시간',  t:'num', u:'분'}
+  ]},
+  {g:'메모', f:[
+    {k:'pros', l:'좋은 점',    t:'area', full:true, ph:'남향이라 오후까지 볕이 든다'},
+    {k:'cons', l:'아쉬운 점',  t:'area', full:true, ph:'큰길 쪽 창문에서 차 소리'},
+    {k:'memo', l:'기타 메모',  t:'area', full:true}
+  ]},
+  {g:'기타', f:[
+    {k:'visitedAt',  l:'방문 날짜', t:'date'},
+    {k:'agent',      l:'중개사',    t:'text'},
+    {k:'agentPhone', l:'연락처',    t:'tel'}
+  ]}
+];
+
+const SAMPLES = [
+  {id:'ex1', _sample:true, name:'상도동 e편한세상', address:'동작구 상도로 · 7/15층', status:'visited', dealType:'jeonse',
+   price:46000, fee:12, feeIncludes:'수도, 청소', loan:30000, moveIn:'2026-04-10', term:'2년', tenant:'live',
+   area:59.8, rooms:3, baths:1, floor:'7/15', facing:'남', elevator:'y', parking:'세대당 1대',
+   station:'상도역', walk:8, commute:38, visitedAt:'2026-09-06',
+   pros:'남향이라 오후 4시까지 볕이 들어온다. 단지 안에 어린이집과 상가가 있어 저녁에도 밝다.',
+   cons:'큰길 쪽 방은 창을 열면 차 소리가 꽤 들린다. 붙박이장이 없어 수납을 따로 사야 한다.',
+   ratings:{light:5,noise:2,mold:4,water:4,storage:2,manage:4,around:4,kitchen:3,bath:3}, photos:[], manualRank:0},
+  {id:'ex2', _sample:true, name:'흑석동 한강현대', address:'동작구 흑석로 · 12/20층', status:'shortlist', dealType:'sale',
+   price:98000, fee:18, feeIncludes:'수도, 인터넷', loan:50000, moveIn:'2026-06-01', tenant:'none',
+   area:84.9, rooms:3, baths:2, floor:'12/20', facing:'남동', elevator:'y', parking:'세대당 1.2대',
+   station:'흑석역', walk:5, commute:31, visitedAt:'2026-09-09',
+   pros:'거실 창으로 한강이 보인다. 욕실 두 개에 수압이 세고, 작년에 올수리해 곰팡이 흔적이 없다.',
+   cons:'가격이 예산 위쪽 끝이다. 관리비가 다른 후보보다 6만원 비싸다.',
+   ratings:{light:5,noise:4,mold:5,water:5,storage:4,manage:5,around:4,kitchen:4,bath:5}, photos:[], manualRank:1},
+  {id:'ex3', _sample:true, name:'봉천동 신축 빌라', address:'관악구 봉천로 · 3/5층', status:'planned', dealType:'jeonse',
+   price:32000, fee:7, loan:20000, moveIn:'2026-03-20', term:'2년', tenant:'none',
+   area:49.5, rooms:2, baths:1, floor:'3/5', facing:'동', elevator:'n', parking:'없음',
+   station:'서울대입구역', walk:13, commute:45,
+   pros:'준공 2년차라 내부가 깨끗하고 보증금이 가장 싸다.',
+   cons:'엘리베이터가 없는 3층이고 주차 자리가 없다. 아직 직접 보지 못했다.',
+   ratings:{light:3,noise:3,mold:4,water:3,storage:3,manage:4,around:3}, photos:[], manualRank:2}
+];
+
+/* ═══ 헬퍼 ═══════════════════════════════════ */
+const $  = (s,r)=>(r||document).querySelector(s);
+const $$ = (s,r)=>Array.prototype.slice.call((r||document).querySelectorAll(s));
+const esc = s => String(s==null?'':s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const uid = ()=> 'p'+Date.now().toString(36)+Math.random().toString(36).slice(2,6);
+function nm(v){ if(v===''||v==null) return null; const n=Number(v); return isFinite(n)?n:null; }
+function labelOf(list,k,f){ for(const x of list) if((x.k||x[0])===k) return (x.l||x[1]); return f||'—'; }
+
+function fmtMan(v){
+  if(v==null) return '—';
+  const m=Math.round(v), a=Math.abs(m), sign=m<0?'-':'';
+  const eok=Math.floor(a/10000), rest=a%10000;
+  if(eok&&rest) return sign+eok+'억 '+rest.toLocaleString('ko-KR')+'만';
+  if(eok) return sign+eok+'억';
+  return sign+a.toLocaleString('ko-KR')+'만';
+}
+function fmtNum(v,digits){ return v==null?'—':v.toLocaleString('ko-KR',{maximumFractionDigits:digits==null?0:digits}); }
+function fmtDate(v){
+  if(!v) return '—';
+  const d=new Date(v+'T00:00:00'); if(isNaN(d)) return esc(v);
+  return (d.getMonth()+1)+'월 '+d.getDate()+'일'+(d.getFullYear()!==new Date().getFullYear()?' ('+String(d.getFullYear()).slice(2)+'년)':'');
+}
+
+/* ═══ 계산 ═══════════════════════════════════ */
+function pyeong(p){ const a=nm(p.area); return a==null?null:a/PYEONG; }
+function perPyeong(p){ const py=pyeong(p), pr=nm(p.price); return (py&&pr!=null)?pr/py:null; }
+function monthly(p,s){
+  const price=nm(p.price); if(price==null) return null;
+  const loan=Math.max(0,Math.min(nm(p.loan)||0, price));
+  const equity=price-loan;
+  const lr=(nm(p.loanRate)!=null?nm(p.loanRate):(s.loanRate||0))/100;
+  const er=(s.equityRate||0)/100;
+  return loan*lr/12 + equity*er/12 + (nm(p.fee)||0);
+}
+function score(p,s){
+  let got=0,max=0; const r=p.ratings||{};
+  s.ratings.forEach(it=>{ const v=nm(r[it.key]); if(v>0){ got+=v*it.weight; max+=5*it.weight; } });
+  return max?Math.round(got/max*100):null;
+}
+
+/* ═══ 상태 & 저장 ════════════════════════════ */
+const LS_P='househunt.props.v1', LS_S='househunt.settings.v1', LS_X='househunt.samplesOff.v1';
+const state = {
+  props:{}, settings:JSON.parse(JSON.stringify(DEFAULT_SETTINGS)),
+  view:'table', sort:{key:'score',dir:'desc'}, picks:[], editing:null, draft:null,
+  samplesOff: (function(){ try{return localStorage.getItem(LS_X)==='1';}catch(e){return false;} })(),
+  cmpSame:false
+};
+
+const store = {
+  mode:'local', db:null, assets:null, user:null, photosOk:false,
+
+  loadLocal(){
+    try{
+      const p=JSON.parse(localStorage.getItem(LS_P)||'null'); if(p&&typeof p==='object') state.props=p;
+      const s=JSON.parse(localStorage.getItem(LS_S)||'null'); if(s) state.settings=Object.assign({},DEFAULT_SETTINGS,s);
+    }catch(e){}
+  },
+  saveLocal(){
+    if(this.mode==='api') return;            // 계정별 서버 저장일 때는 브라우저에 남기지 않는다
+    try{
+      localStorage.setItem(LS_P,JSON.stringify(state.props));
+      localStorage.setItem(LS_S,JSON.stringify(state.settings));
+    }catch(e){ toast('브라우저 저장 공간이 가득 찼습니다'); }
+  },
+  clearLocal(){ try{ localStorage.removeItem(LS_P); localStorage.removeItem(LS_S); }catch(e){} },
+
+  async connect(){
+    /* 1순위 — 직접 올린 서버(Cloudflare Worker)에 붙는다 */
+    try{
+      const r=await fetch('/api/me',{credentials:'same-origin',headers:{accept:'application/json'}});
+      if(r.status===401){
+        let j=null; try{ j=await r.json(); }catch(e){}
+        if(j&&j.login){ location.href=j.login; return; }   // 우리 서버가 맞을 때만 로그인으로 보낸다
+      }
+      if(r.ok && (r.headers.get('content-type')||'').indexOf('json')>=0){
+        this.user=await r.json(); this.mode='api'; this.photosOk=!!this.user.photos;
+        this.clearLocal(); state.props={};
+        try{ await this.pull(); }catch(e){ toast('내 매물을 불러오지 못했습니다'); }
+        paintStorage(); render();
+        window.addEventListener('focus',()=>{
+          if(store.mode==='api' && !$('#sheet').classList.contains('open'))
+            store.pull().then(render).catch(()=>{});
+        });
+        return;
+      }
+    }catch(e){ /* 자체 서버가 아니다 — 다음 방법으로 */ }
+
+    /* 2순위 — Claude 아티팩트의 저장 기능 */
+    let db=null, as=null;
+    try{ if(window.claude&&typeof claude.use==='function') db=await claude.use('db'); }catch(e){ db=null; }
+    if(db){
+      this.db=db; this.mode='db';
+      try{ await this.migrate(); }catch(e){}
+      this.subscribe();
+    }
+    paintStorage();
+    try{ if(window.claude&&typeof claude.use==='function') as=await claude.use('assets'); }catch(e){ as=null; }
+    this.assets=as;
+    render();
+  },
+
+  /* ── 자체 서버용 ── */
+  async pull(){
+    const r=await fetch('/api/state',{credentials:'same-origin'});
+    if(!r.ok) throw new Error('불러오기 실패');
+    const j=await r.json();
+    const m={}; (j.properties||[]).forEach(p=>{ if(p&&p.id) m[p.id]=p; });
+    state.props=m;
+    if(j.settings) state.settings=Object.assign({},DEFAULT_SETTINGS,j.settings);
+  },
+  async call(method,path,body){
+    const opt={method,credentials:'same-origin',headers:{}};
+    if(body!==undefined){ opt.headers['content-type']='application/json'; opt.body=JSON.stringify(body); }
+    const r=await fetch(path,opt);
+    if(r.status===401){ location.href='/auth/login'; throw new Error('로그인이 풀렸습니다'); }
+    if(!r.ok){ let m=''; try{ m=(await r.json()).error||''; }catch(e){} throw new Error(m||('HTTP '+r.status)); }
+    return r.json();
+  },
+
+  /* ── 아티팩트용 ── */
+  async migrate(){
+    const snap=await this.db.collection('properties').limit(1).get();
+    if(!snap.empty) return;
+    const local=Object.values(state.props);
+    if(!local.length) return;
+    for(const p of local){ const b=Object.assign({},p); delete b.id; await this.db.doc('properties/'+p.id).set(b); }
+    try{ await this.db.doc('config/settings').set(state.settings); }catch(e){}
+    toast('이 기기에 있던 '+local.length+'곳을 서버로 옮겼습니다');
+  },
+  subscribe(){
+    this.db.collection('properties').onSnapshot(snap=>{
+      const m={}; snap.docs.forEach(d=>{ m[d.id]=Object.assign({id:d.id},d.data()); });
+      state.props=m; store.saveLocal();
+      if(!$('#sheet').classList.contains('open')) render(); else renderChrome();
+    }, err=>{ if(err&&err.code!=='revoked') console.warn('db',err); });
+    this.db.doc('config/settings').onSnapshot(s=>{
+      if(s.exists){ state.settings=Object.assign({},DEFAULT_SETTINGS,s.data()); store.saveLocal(); render(); }
+    }, ()=>{});
+  },
+
+  /* ── 공통 쓰기 ── */
+  async put(p){
+    state.props[p.id]=p; this.saveLocal(); render();
+    const b=Object.assign({},p); delete b._sample;
+    if(this.mode==='api'){
+      try{ await this.call('PUT','/api/properties/'+encodeURIComponent(p.id), b); }
+      catch(e){ toast('저장하지 못했습니다 — '+e.message); }
+      return;
+    }
+    if(this.mode==='db'){
+      delete b.id;
+      try{ await this.db.doc('properties/'+p.id).set(b); }
+      catch(e){ toast('서버 저장 실패 — 이 기기에는 남아 있습니다'); }
+    }
+  },
+  async remove(id){
+    delete state.props[id]; state.picks=state.picks.filter(x=>x!==id); this.saveLocal(); render();
+    if(this.mode==='api'){
+      try{ await this.call('DELETE','/api/properties/'+encodeURIComponent(id)); }
+      catch(e){ toast('지우지 못했습니다 — '+e.message); }
+      return;
+    }
+    if(this.mode==='db'){ try{ await this.db.doc('properties/'+id).delete(); }catch(e){ toast('서버에서 지우지 못했습니다'); } }
+  },
+  async putSettings(){
+    this.saveLocal(); render();
+    if(this.mode==='api'){ this.call('PUT','/api/settings',state.settings).catch(()=>{}); return; }
+    if(this.mode==='db'){ try{ await this.db.doc('config/settings').set(state.settings); }catch(e){} }
+  },
+  putMany(list){
+    list.forEach(p=>{ state.props[p.id]=p; });
+    this.saveLocal(); render();
+    const items=list.map(p=>{ const b=Object.assign({},p); delete b._sample; return b; });
+    if(this.mode==='api'){ this.call('PUT','/api/properties',{items}).catch(()=>{}); return; }
+    if(this.mode==='db'){
+      items.forEach(b=>{ const id=b.id; delete b.id; this.db.doc('properties/'+id).set(b).catch(()=>{}); });
+    }
+  }
+};
+
+/* 화면에 보일 매물 — 실제 데이터가 없으면 예시를 보여준다 */
+function usingSamples(){ return Object.keys(state.props).length===0 && !state.samplesOff; }
+function allProps(){ return usingSamples() ? SAMPLES.slice() : Object.values(state.props); }
+
+function ordered(){
+  const s=state.settings, list=allProps(), key=state.sort.key, dir=state.sort.dir==='asc'?1:-1;
+  if(key==='manual') return list.sort((a,b)=>(a.manualRank==null?9e9:a.manualRank)-(b.manualRank==null?9e9:b.manualRank));
+  const val=p=>{
+    switch(key){
+      case 'score': return score(p,s);
+      case 'monthly': return monthly(p,s);
+      case 'perPyeong': return perPyeong(p);
+      case 'name': return p.name||'';
+      case 'status': return STATUS.findIndex(x=>x.k===p.status);
+      case 'moveIn': return p.moveIn||'';
+      default: return nm(p[key])!=null?nm(p[key]):p[key]||'';
+    }
+  };
+  return list.sort((a,b)=>{
+    const x=val(a),y=val(b);
+    const xn=(x==null||x===''), yn=(y==null||y==='');
+    if(xn&&yn) return 0; if(xn) return 1; if(yn) return -1;
+    if(typeof x==='string'||typeof y==='string') return String(x).localeCompare(String(y),'ko')*dir;
+    return (x-y)*dir;
+  });
+}
+
+/* ═══ 공통 조각 ══════════════════════════════ */
+const STAR='<svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 2.6l2.9 5.9 6.5.95-4.7 4.58 1.11 6.47L12 17.45 6.19 20.5 7.3 14.03 2.6 9.45l6.5-.95z"/></svg>';
+function statusPill(p){ const s=STATUS.find(x=>x.k===p.status)||STATUS[0]; return '<span class="pill s-'+s.k+'">'+s.l+'</span>'; }
+function dealTag(p){ const d=p.dealType==='sale'?'sale':'jeonse'; return '<span class="tag '+d+'">'+(d==='sale'?'매매':'전세')+'</span>'; }
+function scoreCell(p){
+  const v=score(p,state.settings);
+  if(v==null) return '<span class="sub">미평가</span>';
+  return '<span class="score"><span class="meter"><i style="width:'+v+'%"></i></span><span class="n">'+v+'</span></span>';
+}
+function areaText(p){ const a=nm(p.area); if(a==null) return '—'; return a+' <span class="sub">/ '+fmtNum(pyeong(p),1)+'평</span>'; }
+function monthlyText(p){ const m=monthly(p,state.settings); return m==null?'—':fmtNum(m)+' <span class="sub">만/월</span>'; }
+
+function toast(msg){
+  const t=$('#toast'); t.textContent=msg; t.classList.add('show');
+  clearTimeout(toast._t); toast._t=setTimeout(()=>t.classList.remove('show'),2600);
+}
+function paintStorage(){
+  const el=$('#storage');
+  if(store.mode==='api'&&store.user){
+    el.innerHTML='<span class="dot on"></span><span>'+esc(store.user.email)+'</span>'+
+      '<button class="btn sm ghost" data-logout="1" style="padding:2px 8px">로그아웃</button>';
+    return;
+  }
+  el.innerHTML='<span class="dot'+(store.mode==='db'?' on':'')+'"></span><span>'+
+    (store.mode==='db'?'서버에 저장 · 기기 간 공유':'이 브라우저에만 저장')+'</span>';
+}
+
+/* ═══ 상단 요약 ══════════════════════════════ */
+function renderChrome(){
+  const s=state.settings, list=allProps(), live=list.filter(p=>p.status!=='dropped');
+  const months=live.map(p=>monthly(p,s)).filter(v=>v!=null);
+  const scored=live.map(p=>({p,v:score(p,s)})).filter(x=>x.v!=null).sort((a,b)=>b.v-a.v);
+  const soon=live.map(p=>p.moveIn).filter(Boolean).sort()[0];
+  $('#strip').innerHTML =
+    stat('후보', live.length+' <small>곳</small>' + (list.length>live.length?' <small>· 탈락 '+(list.length-live.length)+'</small>':'')) +
+    stat('월 환산 최저', months.length?fmtNum(Math.min.apply(null,months))+' <small>만원</small>':'—') +
+    stat('가장 이른 입주', soon?fmtDate(soon):'—', 'name') +
+    stat('점수 1순위', scored.length?esc(scored[0].p.name)+' <small>'+scored[0].v+'점</small>':'—', 'name');
+
+  const n=$('#notice');
+  if(usingSamples()){
+    n.innerHTML='<div class="notice"><b>예시 3곳</b>으로 미리 보는 중입니다. 매물을 추가하면 예시는 사라집니다.'+
+      '<button class="btn sm" id="dropSamples">예시 지우기</button></div>';
+    $('#dropSamples').onclick=()=>{ state.samplesOff=true; try{localStorage.setItem(LS_X,'1');}catch(e){} render(); };
+  } else n.innerHTML='';
+
+  $$('#views button').forEach(b=>b.setAttribute('aria-pressed', String(b.dataset.view===state.view)));
+}
+function stat(k,v,cls){ return '<div class="stat"><div class="k">'+k+'</div><div class="v'+(cls?' '+cls:'')+'">'+v+'</div></div>'; }
+
+/* ═══ 표 ════════════════════════════════════ */
+const COLS=[
+  {k:'status',    l:'상태'},
+  {k:'dealType',  l:'거래'},
+  {k:'price',     l:'금액',      num:true},
+  {k:'monthly',   l:'월 환산',    num:true},
+  {k:'perPyeong', l:'평당가',     num:true},
+  {k:'area',      l:'전용 면적',  num:true},
+  {k:'rooms',     l:'방 / 욕실'},
+  {k:'floor',     l:'층'},
+  {k:'facing',    l:'향'},
+  {k:'moveIn',    l:'입주 가능일'},
+  {k:'walk',      l:'역 도보',    num:true},
+  {k:'score',     l:'총점',      num:true}
+];
+
+function renderTable(){
+  const list=ordered(), manual=state.sort.key==='manual', s=state.settings;
+  const head=COLS.map(c=>{
+    const on=state.sort.key===c.k;
+    return '<th class="sortable'+(c.num?' num':'')+'" data-sort="'+c.k+'">'+c.l+
+      (on?'<span class="ar">'+(state.sort.dir==='asc'?'▲':'▼')+'</span>':'')+'</th>';
+  }).join('');
+
+  const rows=list.map((p,i)=>{
+    const picked=state.picks.indexOf(p.id)>=0;
+    const mv = manual
+      ? '<span class="movebtns"><button data-move="up" data-id="'+p.id+'" '+(i===0?'disabled':'')+' aria-label="위로">▲</button>'+
+        '<button data-move="down" data-id="'+p.id+'" '+(i===list.length-1?'disabled':'')+' aria-label="아래로">▼</button></span>'
+      : '';
+    return '<tr data-id="'+p.id+'" class="'+(p.status==='dropped'?'dropped ':'')+(picked?'picked':'')+'">'+
+      '<td class="c-main"><div class="mainCell">'+
+        '<span class="rankno">'+(i+1)+'</span>'+ mv +
+        '<input type="checkbox" class="pick" data-pick="'+p.id+'"'+(picked?' checked':'')+' aria-label="비교에 추가">'+
+        '<div class="namebox"><div class="nm" data-edit="'+p.id+'" role="button" tabindex="0">'+esc(p.name||'이름 없음')+'</div>'+
+        (p.address?'<div class="ad">'+esc(p.address)+'</div>':'')+'</div>'+
+      '</div></td>'+
+      '<td>'+statusPill(p)+'</td>'+
+      '<td>'+dealTag(p)+'</td>'+
+      '<td class="num">'+fmtMan(nm(p.price))+'</td>'+
+      '<td class="num">'+monthlyText(p)+'</td>'+
+      '<td class="num">'+(perPyeong(p)==null?'—':fmtNum(perPyeong(p))+' <span class="sub">만</span>')+'</td>'+
+      '<td class="num">'+areaText(p)+'</td>'+
+      '<td>'+((nm(p.rooms)!=null||nm(p.baths)!=null)?(p.rooms||'—')+' / '+(p.baths||'—'):'—')+'</td>'+
+      '<td>'+esc(p.floor||'—')+'</td>'+
+      '<td>'+(p.facing?esc(p.facing)+'향':'—')+'</td>'+
+      '<td>'+fmtDate(p.moveIn)+'</td>'+
+      '<td class="num">'+(nm(p.walk)!=null?p.walk+' <span class="sub">분</span>':'—')+'</td>'+
+      '<td class="num">'+scoreCell(p)+'</td>'+
+    '</tr>';
+  }).join('');
+
+  return toolbar(manual)+
+    '<div class="tablewrap"><table class="grid"><thead><tr><th class="c-main">매물</th>'+head+'</tr></thead>'+
+    '<tbody>'+rows+'</tbody></table></div>';
+}
+
+function toolbar(manual){
+  const n=state.picks.length;
+  return '<div class="bar">'+
+    '<div class="seg">'+
+      '<button data-order="score" aria-pressed="'+(state.sort.key==='score')+'">점수순</button>'+
+      '<button data-order="manual" aria-pressed="'+manual+'">내 순위</button>'+
+    '</div>'+
+    '<span class="hint">'+(manual?'▲▼로 순서를 바꾸면 그대로 저장됩니다':'열 제목을 누르면 그 기준으로 정렬합니다')+'</span>'+
+    '<div class="right">'+
+      (n?'<span class="hint">'+n+'곳 선택</span><button class="btn sm" id="goCompare">나란히 비교</button>'+
+         '<button class="btn sm ghost" id="clearPicks">해제</button>':'<span class="hint">체크해서 최대 3곳까지 비교</span>')+
+    '</div></div>';
+}
+
+/* ═══ 카드 ══════════════════════════════════ */
+function renderCards(){
+  const list=ordered(), s=state.settings;
+  const cards=list.map((p,i)=>{
+    const picked=state.picks.indexOf(p.id)>=0;
+    const shots=(p.photos||[]).map(ph=>'<img src="'+photoSrc(ph)+'" alt="'+esc(p.name)+' 사진" data-zoom="'+photoSrc(ph)+'">').join('');
+    const kv=[];
+    if(p.floor) kv.push('<span><b>층</b>'+esc(p.floor)+'</span>');
+    if(p.facing) kv.push('<span><b>향</b>'+esc(p.facing)+'향</span>');
+    if(nm(p.rooms)!=null) kv.push('<span><b>방</b>'+p.rooms+'개</span>');
+    if(nm(p.baths)!=null) kv.push('<span><b>욕실</b>'+p.baths+'개</span>');
+    if(p.elevator) kv.push('<span><b>승강기</b>'+(p.elevator==='y'?'있음':'없음')+'</span>');
+    if(p.parking) kv.push('<span><b>주차</b>'+esc(p.parking)+'</span>');
+    if(p.station) kv.push('<span><b>'+esc(p.station)+'</b>도보 '+(nm(p.walk)!=null?p.walk+'분':'—')+'</span>');
+    if(nm(p.commute)!=null) kv.push('<span><b>출퇴근</b>'+p.commute+'분</span>');
+    if(p.moveIn) kv.push('<span><b>입주</b>'+fmtDate(p.moveIn)+'</span>');
+    return '<article class="card'+(p.status==='dropped'?' dropped':'')+'" data-id="'+p.id+'">'+
+      '<div class="card-hd"><input type="checkbox" class="pick" data-pick="'+p.id+'"'+(picked?' checked':'')+' aria-label="비교에 추가">'+
+        '<div style="min-width:0;flex:1"><h3 class="t" data-edit="'+p.id+'" role="button" tabindex="0">'+esc(p.name||'이름 없음')+'</h3>'+
+        '<div class="meta">'+(i+1)+'순위 · '+esc(p.address||'주소 미입력')+'</div></div>'+
+        statusPill(p)+'</div>'+
+      '<div class="card-key">'+
+        '<div><div class="k">'+(p.dealType==='sale'?'매매가':'보증금')+'</div><div class="v">'+fmtMan(nm(p.price))+'</div></div>'+
+        '<div><div class="k">월 환산</div><div class="v">'+(monthly(p,s)==null?'—':fmtNum(monthly(p,s))+'만')+'</div></div>'+
+        '<div><div class="k">전용</div><div class="v">'+(nm(p.area)!=null?fmtNum(pyeong(p),1)+'평':'—')+'</div></div>'+
+      '</div>'+
+      '<div class="card-body">'+
+        (kv.length?'<div class="kv">'+kv.join('')+'</div>':'')+
+        (shots?'<div class="shots">'+shots+'</div>':'')+
+        (p.pros?'<div class="pc good"><span class="lb">＋</span><span>'+esc(p.pros)+'</span></div>':'')+
+        (p.cons?'<div class="pc bad"><span class="lb">－</span><span>'+esc(p.cons)+'</span></div>':'')+
+      '</div>'+
+      '<div class="card-ft">'+dealTag(p)+'<button class="btn sm" data-edit="'+p.id+'">수정</button>'+scoreCell(p)+'</div>'+
+    '</article>';
+  }).join('');
+  return toolbar(state.sort.key==='manual')+'<div class="cards">'+cards+'</div>';
+}
+function photoSrc(ph){ return ph.id?('/_blob/'+ph.id):(ph.url||''); }
+
+/* ═══ 나란히 비교 ════════════════════════════ */
+function cmpRows(){
+  const s=state.settings;
+  const rows=[
+    {sect:'기본'},
+    {l:'상태',       txt:p=>statusPill(p)},
+    {l:'거래 형태',   txt:p=>dealTag(p)},
+    {l:'주소',       txt:p=>esc(p.address||'—')},
+    {sect:'돈'},
+    {l:'보증금 · 매매가', txt:p=>fmtMan(nm(p.price)), v:p=>nm(p.price), low:true},
+    {l:'관리비',     txt:p=>nm(p.fee)!=null?p.fee+'만원':'—', v:p=>nm(p.fee), low:true},
+    {l:'관리비 포함',  txt:p=>esc(p.feeIncludes||'—')},
+    {l:'대출 예정액',  txt:p=>fmtMan(nm(p.loan))},
+    {l:'월 환산 비용', txt:p=>monthly(p,s)==null?'—':fmtNum(monthly(p,s))+'만원', v:p=>monthly(p,s), low:true},
+    {l:'평당가',     txt:p=>perPyeong(p)==null?'—':fmtNum(perPyeong(p))+'만원', v:p=>perPyeong(p), low:true},
+    {sect:'일정'},
+    {l:'입주 가능일',  txt:p=>fmtDate(p.moveIn)},
+    {l:'계약 기간',   txt:p=>esc(p.term||'—')},
+    {l:'현 세입자',   txt:p=>labelOf([['','—'],['none','공실'],['live','거주 중'],['unknown','모름']],p.tenant||'')},
+    {sect:'공간'},
+    {l:'전용 면적',   txt:p=>nm(p.area)!=null?p.area+'m² / '+fmtNum(pyeong(p),1)+'평':'—', v:p=>nm(p.area), low:false},
+    {l:'방 / 욕실',   txt:p=>(p.rooms||'—')+' / '+(p.baths||'—')},
+    {l:'층',         txt:p=>esc(p.floor||'—')},
+    {l:'향',         txt:p=>p.facing?esc(p.facing)+'향':'—'},
+    {l:'엘리베이터',  txt:p=>p.elevator?(p.elevator==='y'?'있음':'없음'):'—'},
+    {l:'주차',       txt:p=>esc(p.parking||'—')},
+    {sect:'입지'},
+    {l:'가까운 역',   txt:p=>esc(p.station||'—')},
+    {l:'역까지 도보', txt:p=>nm(p.walk)!=null?p.walk+'분':'—', v:p=>nm(p.walk), low:true},
+    {l:'출퇴근 시간', txt:p=>nm(p.commute)!=null?p.commute+'분':'—', v:p=>nm(p.commute), low:true},
+    {sect:'평가'},
+    {l:'총점',       txt:p=>score(p,s)==null?'—':score(p,s)+'점', v:p=>score(p,s), low:false}
+  ];
+  s.ratings.forEach(it=>rows.push({
+    l:it.label, rating:true,
+    txt:p=>{ const v=nm((p.ratings||{})[it.key]); return v?('★'.repeat(v)+'<span style="opacity:.3">'+'★'.repeat(5-v)+'</span>'):'—'; },
+    v:p=>nm((p.ratings||{})[it.key]), low:false
+  }));
+  rows.push({sect:'메모'});
+  rows.push({l:'좋은 점', long:true, txt:p=>esc(p.pros||'—')});
+  rows.push({l:'아쉬운 점', long:true, txt:p=>esc(p.cons||'—')});
+  rows.push({l:'기타 메모', long:true, txt:p=>esc(p.memo||'—')});
+  return rows;
+}
+
+function renderCompare(){
+  const byId={}; allProps().forEach(p=>byId[p.id]=p);
+  const sel=state.picks.map(id=>byId[id]).filter(Boolean);
+  if(sel.length<2){
+    return '<div class="empty"><h3>비교할 매물을 고르세요</h3>'+
+      '<p>표나 카드 화면에서 체크박스로 2~3곳을 선택하면 항목별로 나란히 놓고 봅니다.</p>'+
+      '<button class="btn primary" data-go="table">표로 가기</button></div>';
+  }
+  const rows=cmpRows();
+  const body=rows.map(r=>{
+    if(r.sect) return '<tr class="sect"><td class="lbl" style="background:var(--surface-3)">'+r.sect+'</td><td colspan="'+sel.length+'"></td></tr>';
+    const cells=sel.map(p=>r.txt(p));
+    if(state.cmpSame && !r.long){
+      const uniq=cells.filter((c,i)=>cells.indexOf(c)===i);
+      if(uniq.length===1) return '';
+    }
+    let cls=sel.map(()=>'');
+    if(r.v){
+      const vals=sel.map(r.v);
+      const ok=vals.filter(v=>v!=null&&isFinite(v));
+      if(ok.length>1){
+        const best=r.low?Math.min.apply(null,ok):Math.max.apply(null,ok);
+        const worst=r.low?Math.max.apply(null,ok):Math.min.apply(null,ok);
+        if(best!==worst) cls=vals.map(v=>v==null?'':(v===best?' class="best"':(v===worst?' class="worst"':'')));
+      }
+    }
+    return '<tr><td class="lbl">'+r.l+'</td>'+
+      cells.map((c,i)=>'<td'+(cls[i]||(r.long?' class="long"':''))+'>'+
+        (r.v&&!r.rating?'<span class="val">'+c+'</span>':c)+'</td>').join('')+'</tr>';
+  }).join('');
+
+  return '<div class="bar">'+
+      '<span class="hint">'+sel.length+'곳 비교 중 · 초록은 가장 좋은 값, 주황은 가장 아쉬운 값</span>'+
+      '<div class="right"><label class="hint" style="display:flex;gap:6px;align-items:center;cursor:pointer">'+
+      '<input type="checkbox" id="cmpSame"'+(state.cmpSame?' checked':'')+'> 같은 값 감추기</label>'+
+      '<button class="btn sm ghost" id="clearPicks">선택 해제</button></div></div>'+
+    '<div class="cmpwrap"><table class="cmp"><thead><tr><th class="lbl"></th>'+
+    sel.map(p=>'<th><div class="hd">'+esc(p.name||'이름 없음')+'</div><div class="sub">'+esc(p.address||'')+'</div></th>').join('')+
+    '</tr></thead><tbody>'+body+'</tbody></table></div>';
+}
+
+/* ═══ 설정 ══════════════════════════════════ */
+function renderSettings(){
+  const s=state.settings;
+  const rows=s.ratings.map((it,i)=>
+    '<div class="rateRow">'+
+      '<input type="text" value="'+esc(it.label)+'" data-rlabel="'+i+'" aria-label="항목 이름">'+
+      '<span class="wsel" role="group" aria-label="가중치">'+
+        [1,2,3].map(w=>'<button data-rweight="'+i+'" data-w="'+w+'" aria-pressed="'+(it.weight===w)+'">'+w+'</button>').join('')+
+      '</span>'+
+      '<button class="btn sm ghost" data-rdel="'+i+'" aria-label="삭제">삭제</button>'+
+    '</div>').join('');
+
+  return '<div class="panel"><h2>월 환산 비용 기준</h2>'+
+      '<p class="desc">전세와 매매를 한 줄에 놓고 보기 위한 값입니다. 대출금에는 대출 금리를, 내 돈이 묶이는 금액에는 기회비용 금리를 매달 비용으로 잡습니다. 기회비용을 0으로 두면 대출 이자와 관리비만 계산합니다.</p>'+
+      '<div class="inline">'+
+        '<div class="field"><label for="loanRate">대출 금리 (연 %)</label><input type="number" id="loanRate" step="0.1" min="0" value="'+s.loanRate+'"></div>'+
+        '<div class="field"><label for="equityRate">자기자본 기회비용 (연 %)</label><input type="number" id="equityRate" step="0.1" min="0" value="'+s.equityRate+'"></div>'+
+      '</div></div>'+
+    '<div class="panel"><h2>별점 항목과 가중치</h2>'+
+      '<p class="desc">총점은 매긴 항목만 가지고 100점으로 환산합니다. 가중치 3은 1보다 세 배 무겁게 반영됩니다. 아직 별점을 안 준 항목은 계산에서 빠집니다.</p>'+
+      rows+
+      '<div style="margin-top:12px"><button class="btn sm" id="addRating">항목 추가</button></div></div>'+
+    '<div class="panel"><h2>데이터</h2>'+
+      '<p class="desc">'+(
+        store.mode==='api'
+          ? esc(store.user?store.user.email:'')+' 계정으로 로그인해 있습니다. 매물 '+Object.keys(state.props).length+
+            '곳이 이 계정에만 저장돼 있고, 같은 주소를 열어도 다른 사람은 자기 것만 봅니다.'
+        : store.mode==='db'
+          ? '매물 '+Object.keys(state.props).length+'곳이 서버에 저장돼 있습니다. 다른 기기에서 이 주소를 열면 같은 내용이 보입니다.'
+          : '지금은 이 브라우저에만 저장됩니다. 다른 기기에서는 보이지 않습니다.')+'</p>'+
+      '<div class="inline" style="gap:9px">'+
+        '<button class="btn sm" id="copyJson">전체 내용 복사</button>'+
+        (store.mode==='api'?'<a class="btn sm" href="/auth/password">비밀번호 변경</a>'+
+                            '<button class="btn sm" data-logout="1">로그아웃</button>':'')+
+        (state.samplesOff&&!Object.keys(state.props).length?'<button class="btn sm" id="showSamples">예시 다시 보기</button>':'')+
+      '</div></div>';
+}
+
+/* ═══ 입력 폼 ════════════════════════════════ */
+function openSheet(id){
+  const src = id ? (allProps().find(p=>p.id===id)||null) : null;
+  state.editing = id||null;
+  state.draft = src ? JSON.parse(JSON.stringify(src)) : {id:uid(), status:'interest', dealType:'jeonse', ratings:{}, photos:[]};
+  if(!state.draft.ratings) state.draft.ratings={};
+  if(!state.draft.photos) state.draft.photos=[];
+  $('#sheetTitle').textContent = src ? '매물 수정' : '매물 추가';
+  $('#sheetDelete').style.display = src ? '' : 'none';
+  $('#sheetBody').innerHTML = formHTML(state.draft);
+  $('#sheetBody').scrollTop = 0;
+  $('#scrim').classList.add('open'); $('#sheet').classList.add('open');
+  document.body.style.overflow='hidden';
+  setTimeout(()=>{ const f=$('#sheetBody input[name=name]'); if(f) f.focus(); },30);
+}
+function closeSheet(){
+  $('#scrim').classList.remove('open'); $('#sheet').classList.remove('open');
+  document.body.style.overflow=''; state.editing=null; state.draft=null;
+}
+function formHTML(d){
+  const groups=FORM.map(g=>'<fieldset><legend>'+g.g+'</legend><div class="fgrid">'+
+    g.f.map(f=>field(f,d)).join('')+'</div></fieldset>').join('');
+  const rate='<fieldset><legend>별점</legend><div class="rateGrid">'+
+    state.settings.ratings.map(it=>{
+      const v=nm((d.ratings||{})[it.key])||0;
+      return '<div class="rateItem"><span class="rl">'+esc(it.label)+' <span class="rw">×'+it.weight+'</span></span>'+
+        '<span class="stars" role="group" aria-label="'+esc(it.label)+' 별점">'+
+        [1,2,3,4,5].map(n=>'<button type="button" class="'+(n<=v?'on':'')+'" data-star="'+it.key+'" data-n="'+n+'" aria-label="'+n+'점">'+STAR+'</button>').join('')+
+        '</span></div>';
+    }).join('')+'</div></fieldset>';
+  const canPhoto = !!store.assets || store.mode==='local' || (store.mode==='api' && store.photosOk);
+  const shots=(d.photos||[]).map((ph,i)=>'<figure><img src="'+photoSrc(ph)+'" alt="매물 사진 '+(i+1)+'"><button type="button" class="rm" data-rmphoto="'+i+'" aria-label="사진 삭제">✕</button></figure>').join('');
+  const photo='<fieldset><legend>사진</legend>'+
+    (canPhoto
+      ? '<div class="photoRow" id="photoRow">'+shots+'<button type="button" class="addPhoto" id="pickPhoto">＋ 사진</button></div>'+
+        '<input type="file" id="photoInput" accept="image/*" multiple hidden>'
+      : '<p class="desc" style="margin:0">이 화면에서는 사진을 올릴 수 없습니다. 발행된 주소에서 열면 사용할 수 있습니다.</p>')+
+    '</fieldset>';
+  return groups+rate+photo;
+}
+function field(f,d){
+  const v = d[f.k]==null?'':d[f.k];
+  const cls = f.full?' class="field full"':' class="field"';
+  const id = 'f_'+f.k;
+  let ctrl;
+  if(f.t==='select'){
+    const opts=(f.opts||[]).map(o=>'<option value="'+esc(o[0])+'"'+(String(v)===String(o[0])?' selected':'')+'>'+esc(o[1])+'</option>').join('');
+    ctrl='<select id="'+id+'" name="'+f.k+'">'+opts+'</select>';
+  } else if(f.t==='area'){
+    ctrl='<textarea id="'+id+'" name="'+f.k+'" placeholder="'+esc(f.ph||'')+'">'+esc(v)+'</textarea>';
+  } else {
+    const type = f.t==='num'?'number':(f.t==='date'?'date':(f.t==='url'?'url':(f.t==='tel'?'tel':'text')));
+    const step = f.t==='num'?' step="any"':'';
+    const inp='<input type="'+type+'" id="'+id+'" name="'+f.k+'" value="'+esc(v)+'" placeholder="'+esc(f.ph||'')+'"'+step+'>';
+    ctrl = f.u ? '<div class="unit">'+inp+'<span class="u">'+f.u+'</span></div>' : inp;
+  }
+  return '<div'+cls+'><label for="'+id+'">'+f.l+'</label>'+ctrl+'</div>';
+}
+function collectForm(){
+  const d=state.draft;
+  $$('#sheetBody [name]').forEach(el=>{
+    const k=el.name, raw=el.value.trim();
+    if(el.type==='number'){ d[k] = raw===''?null:Number(raw); }
+    else d[k] = raw===''?'':raw;
+  });
+  return d;
+}
+
+/* ═══ 그리기 ════════════════════════════════ */
+function render(){
+  renderChrome();
+  const v=$('#view');
+  if(state.view==='table')        v.innerHTML=renderTable();
+  else if(state.view==='cards')   v.innerHTML=renderCards();
+  else if(state.view==='compare') v.innerHTML=renderCompare();
+  else                            v.innerHTML=renderSettings();
+}
+
+/* ═══ 동작 ══════════════════════════════════ */
+function setView(v){ state.view=v; render(); window.scrollTo({top:0,behavior:'instant'}); }
+function setSort(k){
+  if(state.sort.key===k) state.sort.dir = state.sort.dir==='asc'?'desc':'asc';
+  else state.sort={key:k, dir:(k==='name'||k==='moveIn'||k==='status')?'asc':(k==='score'?'desc':'asc')};
+  render();
+}
+function togglePick(id,on){
+  const i=state.picks.indexOf(id);
+  if(on&&i<0){ if(state.picks.length>=3){ toast('나란히 비교는 3곳까지 됩니다'); render(); return; } state.picks.push(id); }
+  else if(!on&&i>=0) state.picks.splice(i,1);
+  render();
+}
+function move(id,dir){
+  if(state.sort.key!=='manual'){ state.sort={key:'manual',dir:'asc'}; }
+  const list=ordered();
+  const i=list.findIndex(p=>p.id===id), j=dir==='up'?i-1:i+1;
+  if(i<0||j<0||j>=list.length) return;
+  const t=list[i]; list[i]=list[j]; list[j]=t;
+  list.forEach((p,k)=>{ p.manualRank=k; });
+  if(usingSamples()){ render(); return; }
+  store.putMany(list.map(p=>Object.assign({},p)));
+}
+function saveSheet(){
+  const editing=state.editing, d=collectForm();
+  if(!d.name){ toast('이름은 채워 주세요'); const f=$('#sheetBody input[name=name]'); if(f) f.focus(); return; }
+  delete d._sample;
+  if(d.manualRank==null) d.manualRank=Object.keys(state.props).length;
+  store.put(d); closeSheet();
+  toast(editing?'저장했습니다':'추가했습니다');
+}
+
+/* 사진 */
+function resizeImage(file,max){
+  return new Promise((res,rej)=>{
+    const url=URL.createObjectURL(file), img=new Image();
+    img.onload=()=>{
+      const sc=Math.min(1,max/Math.max(img.width,img.height));
+      const c=document.createElement('canvas');
+      c.width=Math.max(1,Math.round(img.width*sc)); c.height=Math.max(1,Math.round(img.height*sc));
+      c.getContext('2d').drawImage(img,0,0,c.width,c.height);
+      URL.revokeObjectURL(url);
+      c.toBlob(b=>b?res(b):rej(new Error('변환 실패')),'image/jpeg',0.82);
+    };
+    img.onerror=()=>{ URL.revokeObjectURL(url); rej(new Error('읽기 실패')); };
+    img.src=url;
+  });
+}
+function blobToDataURL(b){ return new Promise((res,rej)=>{ const r=new FileReader(); r.onload=()=>res(r.result); r.onerror=rej; r.readAsDataURL(b); }); }
+async function handleFiles(files){
+  for(let i=0;i<files.length;i++){
+    try{
+      const blob=await resizeImage(files[i], store.assets?1600:900);
+      let ph;
+      if(store.mode==='api'){
+        const r=await fetch('/api/photos',{method:'POST',credentials:'same-origin',
+          headers:{'content-type':'image/jpeg'},body:blob});
+        if(!r.ok){ let m=''; try{ m=(await r.json()).error||''; }catch(e2){} throw new Error(m||'업로드 실패'); }
+        const j=await r.json(); ph={url:j.url};
+      }
+      else if(store.assets){ const r=await store.assets.upload(blob); ph={id:r.id}; }
+      else if(store.mode==='local'){ ph={url:await blobToDataURL(blob)}; }
+      else { toast('사진 저장을 쓸 수 없습니다'); return; }
+      state.draft.photos.push(ph); refreshPhotos();
+    }catch(e){ toast('사진을 올리지 못했습니다'); }
+  }
+}
+function refreshPhotos(){
+  const row=$('#photoRow'); if(!row) return;
+  row.innerHTML = state.draft.photos.map((ph,i)=>
+    '<figure><img src="'+photoSrc(ph)+'" alt="매물 사진 '+(i+1)+'"><button type="button" class="rm" data-rmphoto="'+i+'" aria-label="사진 삭제">✕</button></figure>').join('')+
+    '<button type="button" class="addPhoto" id="pickPhoto">＋ 사진</button>';
+}
+
+/* ═══ 이벤트 ════════════════════════════════ */
+document.addEventListener('click', e=>{
+  const t=e.target.closest('[data-view],[data-sort],[data-order],[data-edit],[data-move],[data-zoom],[data-go],[data-star],[data-rweight],[data-rdel],[data-rmphoto],[data-logout],button');
+  if(!t) return;
+
+  if(t.dataset.view){ setView(t.dataset.view); return; }
+  if(t.dataset.go){ setView(t.dataset.go); return; }
+  if(t.dataset.sort){ setSort(t.dataset.sort); return; }
+  if(t.dataset.order){ state.sort = t.dataset.order==='manual'?{key:'manual',dir:'asc'}:{key:'score',dir:'desc'}; render(); return; }
+  if(t.dataset.move){ move(t.dataset.id,t.dataset.move); return; }
+  if(t.dataset.edit){ openSheet(t.dataset.edit); return; }
+  if(t.dataset.zoom){ $('#lightboxImg').src=t.dataset.zoom; $('#lightbox').classList.add('open'); return; }
+  if(t.dataset.logout){
+    t.disabled=true;
+    fetch('/auth/logout',{method:'POST',credentials:'same-origin'})
+      .then(()=>{ location.href='/auth/login'; })
+      .catch(()=>{ location.href='/auth/login'; });
+    return;
+  }
+
+  if(t.dataset.star){
+    const k=t.dataset.star, n=Number(t.dataset.n);
+    const cur=nm(state.draft.ratings[k])||0;
+    state.draft.ratings[k] = cur===n?0:n;
+    const grp=t.parentNode;
+    $$('button',grp).forEach((b,i)=>b.classList.toggle('on', i < (state.draft.ratings[k]||0)));
+    return;
+  }
+  if(t.dataset.rweight!=null){
+    state.settings.ratings[Number(t.dataset.rweight)].weight=Number(t.dataset.w);
+    store.putSettings(); return;
+  }
+  if(t.dataset.rdel!=null){
+    state.settings.ratings.splice(Number(t.dataset.rdel),1);
+    store.putSettings(); return;
+  }
+  if(t.dataset.rmphoto!=null){ state.draft.photos.splice(Number(t.dataset.rmphoto),1); refreshPhotos(); return; }
+
+  switch(t.id){
+    case 'addBtn': openSheet(null); break;
+    case 'sheetClose': closeSheet(); break;
+    case 'sheetSave': saveSheet(); break;
+    case 'sheetDelete': {
+      if(t.dataset.armed!=='1'){ t.dataset.armed='1'; t.textContent='정말 지울까요?'; t.classList.add('danger');
+        setTimeout(()=>{ if(t.dataset.armed==='1'){ t.dataset.armed=''; t.textContent='삭제'; } },4000); break; }
+      const id=state.editing; t.dataset.armed=''; t.textContent='삭제';
+      if(id && !usingSamples()){ store.remove(id); toast('지웠습니다'); }
+      closeSheet(); break;
+    }
+    case 'goCompare': setView('compare'); break;
+    case 'clearPicks': state.picks=[]; render(); break;
+    case 'addRating':
+      state.settings.ratings.push({key:'r'+Date.now().toString(36), label:'새 항목', weight:2});
+      store.putSettings(); break;
+    case 'showSamples': state.samplesOff=false; try{localStorage.removeItem(LS_X);}catch(err){} render(); break;
+    case 'pickPhoto': $('#photoInput').click(); break;
+    case 'copyJson': {
+      const txt=JSON.stringify({properties:allProps(), settings:state.settings}, null, 2);
+      if(navigator.clipboard&&navigator.clipboard.writeText){
+        navigator.clipboard.writeText(txt).then(()=>toast('전체 내용을 클립보드에 복사했습니다')).catch(()=>toast('복사가 막혀 있습니다'));
+      } else toast('이 브라우저에서는 복사를 쓸 수 없습니다');
+      break;
+    }
+  }
+});
+
+document.addEventListener('change', e=>{
+  const t=e.target;
+  if(t.dataset && t.dataset.pick){ togglePick(t.dataset.pick, t.checked); return; }
+  if(t.id==='cmpSame'){ state.cmpSame=t.checked; render(); return; }
+  if(t.id==='loanRate'){ state.settings.loanRate=Number(t.value)||0; store.putSettings(); return; }
+  if(t.id==='equityRate'){ state.settings.equityRate=Number(t.value)||0; store.putSettings(); return; }
+  if(t.dataset && t.dataset.rlabel!=null){
+    state.settings.ratings[Number(t.dataset.rlabel)].label = t.value.trim()||'이름 없는 항목';
+    store.putSettings(); return;
+  }
+  if(t.id==='photoInput' && t.files && t.files.length){ handleFiles(Array.prototype.slice.call(t.files)); t.value=''; return; }
+});
+
+document.addEventListener('keydown', e=>{
+  if(e.key==='Escape'){
+    if($('#lightbox').classList.contains('open')) $('#lightbox').classList.remove('open');
+    else if($('#sheet').classList.contains('open')) closeSheet();
+  }
+  if((e.key==='Enter'||e.key===' ') && e.target.dataset && e.target.dataset.edit && e.target.getAttribute('role')==='button'){
+    e.preventDefault(); openSheet(e.target.dataset.edit);
+  }
+});
+$('#scrim').addEventListener('click', closeSheet);
+$('#lightbox').addEventListener('click', function(){ this.classList.remove('open'); });
+
+/* ═══ 시작 ══════════════════════════════════ */
+store.loadLocal();
+paintStorage();
+render();
+store.connect();
+})();
+</script>
