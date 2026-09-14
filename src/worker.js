@@ -44,7 +44,7 @@ export default {
         if (!u) return json({ error: 'unauthorized', login: '/auth/login' }, 401);
         return json({
           email: u.email, name: u.name, mode: 'password',
-          photos: true, photoStore: env.PHOTOS ? 'r2' : 'db',
+          photos: true, photoStore: env.PHOTOS ? 'r2' : 'db', admin: isAdmin(env, u),
           photoMax: env.PHOTOS ? MAX_PHOTO : MAX_PHOTO_DB,
           book: u.book, books: await myBooks(env, u.key)
         });
@@ -56,6 +56,7 @@ export default {
         if (req.method !== 'GET' && !sameOrigin(req, url)) {
           return json({ error: '요청 출처가 올바르지 않습니다' }, 403);
         }
+        if (path.startsWith('/api/admin/')) return await handleAdmin(req, env, url, u);
         return await handleApi(req, env, url, u);
       }
 
@@ -244,6 +245,10 @@ async function rateFail(env, key, windowMs, maxFail, lockMs) {
 }
 async function rateClear(env, key) {
   await env.DB.prepare('DELETE FROM login_attempts WHERE key = ?').bind(key).run();
+}
+function isAdmin(env, u) {
+  const a = String(env.ADMIN_EMAIL || '').trim().toLowerCase();
+  return !!a && !!u && u.key === a;
 }
 function clientIp(req) { return req.headers.get('CF-Connecting-IP') || '0.0.0.0'; }
 function minutesLeft(until) { return Math.max(1, Math.ceil((until - Date.now()) / 60000)); }
@@ -828,6 +833,116 @@ async function handleApi(req, env, url, u) {
   }
 
   return json({ error: '없는 경로입니다' }, 404);
+}
+
+/* ═══ 관리 ══════════════════════════════════
+ * ADMIN_EMAIL 로 로그인했을 때만 열립니다. 다른 사람에게는 404 로 보입니다.
+ */
+async function handleAdmin(req, env, url, u) {
+  if (!isAdmin(env, u)) return json({ error: '없는 경로입니다' }, 404);
+  const path = url.pathname, method = req.method;
+
+  if (path === '/api/admin/overview' && method === 'GET') {
+    const users = await env.DB.prepare(
+      'SELECT u.email, u.name, u.created_at, u.last_login, ' +
+      '(SELECT COUNT(*) FROM book_members m WHERE m.user_key = u.email) AS books, ' +
+      '(SELECT COUNT(*) FROM books b WHERE b.owner_key = u.email) AS owned, ' +
+      "(SELECT la.until FROM login_attempts la WHERE la.key = 'e:' || u.email) AS locked " +
+      'FROM users u ORDER BY u.created_at DESC'
+    ).all();
+    const books = await env.DB.prepare(
+      'SELECT b.id, b.name, b.owner_key, b.created_at, ' +
+      '(SELECT COUNT(*) FROM book_members m WHERE m.book_id = b.id) AS people, ' +
+      '(SELECT COUNT(*) FROM properties p WHERE p.book_id = b.id) AS props, ' +
+      '(SELECT COUNT(*) FROM photos f WHERE f.book_id = b.id) AS photos, ' +
+      '(SELECT COALESCE(SUM(f.size),0) FROM photos f WHERE f.book_id = b.id) AS bytes ' +
+      'FROM books b ORDER BY b.created_at DESC'
+    ).all();
+    const invites = await env.DB.prepare(
+      'SELECT COUNT(*) AS n FROM book_invites WHERE used_at IS NULL AND expires_at > ?'
+    ).bind(Date.now()).first();
+    return json({
+      me: u.key,
+      users: users.results || [],
+      books: books.results || [],
+      liveInvites: Number(invites.n) || 0,
+      signupOpen: !!env.SIGNUP_CODE,
+      photoStore: env.PHOTOS ? 'r2' : 'db'
+    });
+  }
+
+  if (path === '/api/admin/unlock' && method === 'POST') {
+    const who = String((await req.json()).email || '').toLowerCase();
+    await env.DB.prepare("DELETE FROM login_attempts WHERE key IN ('e:' || ?, 'p:' || ?)")
+      .bind(who, who).run();
+    return json({ ok: true });
+  }
+
+  if (path === '/api/admin/logout' && method === 'POST') {
+    const who = String((await req.json()).email || '').toLowerCase();
+    await env.DB.prepare('UPDATE users SET session_epoch = session_epoch + 1 WHERE email = ?')
+      .bind(who).run();
+    return json({ ok: true });
+  }
+
+  /* 매물과 장부를 통째로 내려받기. 비밀번호 해시는 넣지 않습니다. */
+  if (path === '/api/admin/export' && method === 'GET') {
+    const q = async (sql) => ((await env.DB.prepare(sql).all()).results || []);
+    const props = await q('SELECT book_id, id, data, updated_at, updated_by FROM properties');
+    const sets  = await q('SELECT book_id, data, updated_at FROM settings');
+    return json({
+      app: '하우스헌팅',
+      exportedAt: nowIso(),
+      note: '비밀번호 해시와 사진 본체는 들어 있지 않습니다. 완전 복구는 wrangler d1 export 를 쓰세요.',
+      users:   await q('SELECT email, name, created_at, last_login, current_book FROM users'),
+      books:   await q('SELECT id, name, owner_key, created_at FROM books'),
+      members: await q('SELECT book_id, user_key, role, joined_at FROM book_members'),
+      photos:  await q('SELECT id, book_id, storage, content_type, size, created_at FROM photos'),
+      properties: props.map(r => ({ ...r, data: safeParse(r.data) })),
+      settings:   sets.map(r => ({ ...r, data: safeParse(r.data) }))
+    });
+  }
+
+  const delUser = path.match(/^\/api\/admin\/users\/(.+)$/);
+  if (delUser && method === 'DELETE') {
+    const who = decodeURIComponent(delUser[1]).toLowerCase();
+    if (who === u.key) return json({ error: '자기 계정은 여기서 지울 수 없습니다' }, 409);
+    const owned = await env.DB.prepare('SELECT id FROM books WHERE owner_key = ?').bind(who).all();
+    for (const b of (owned.results || [])) await dropBook(env, b.id);
+    await env.DB.batch([
+      env.DB.prepare('DELETE FROM book_members WHERE user_key = ?').bind(who),
+      env.DB.prepare("DELETE FROM login_attempts WHERE key IN ('e:' || ?, 'p:' || ?)").bind(who, who),
+      env.DB.prepare('DELETE FROM users WHERE email = ?').bind(who)
+    ]);
+    return json({ ok: true, droppedBooks: (owned.results || []).length });
+  }
+
+  const delBook = path.match(/^\/api\/admin\/books\/([A-Za-z0-9_-]{1,64})$/);
+  if (delBook && method === 'DELETE') {
+    await dropBook(env, delBook[1]);
+    return json({ ok: true });
+  }
+
+  return json({ error: '없는 경로입니다' }, 404);
+}
+
+/* 장부 하나와 그 안의 모든 것을 지웁니다 */
+async function dropBook(env, id) {
+  const shots = await env.DB.prepare(
+    'SELECT id, storage, object_key FROM photos WHERE book_id = ?').bind(id).all();
+  for (const f of (shots.results || [])) {
+    if (f.storage === 'r2' && env.PHOTOS) { try { await env.PHOTOS.delete(f.object_key); } catch (e) {} }
+    await env.DB.prepare('DELETE FROM photo_blobs WHERE id = ?').bind(f.id).run();
+  }
+  await env.DB.batch([
+    env.DB.prepare('DELETE FROM photos WHERE book_id = ?').bind(id),
+    env.DB.prepare('DELETE FROM properties WHERE book_id = ?').bind(id),
+    env.DB.prepare('DELETE FROM settings WHERE book_id = ?').bind(id),
+    env.DB.prepare('DELETE FROM book_invites WHERE book_id = ?').bind(id),
+    env.DB.prepare('DELETE FROM book_members WHERE book_id = ?').bind(id),
+    env.DB.prepare('UPDATE users SET current_book = NULL WHERE current_book = ?').bind(id),
+    env.DB.prepare('DELETE FROM books WHERE id = ?').bind(id)
+  ]);
 }
 
 async function members(env, bk) {

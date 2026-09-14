@@ -1,3 +1,4 @@
+<meta charset="utf-8">
 <title>하우스헌팅</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -21,6 +22,11 @@
   --f-sans:'IBM Plex Sans KR','Apple SD Gothic Neo','Malgun Gothic',system-ui,sans-serif;
   --f-mono:'IBM Plex Mono',ui-monospace,SFMono-Regular,Menlo,monospace;
   --r:16px; --r-s:11px; --r-xs:8px;
+  /* 일러스트 채색 — 스티커처럼 테마와 상관없이 같은 색을 쓴다 */
+  --il-line:#1F1B16; --il-wall:#F2EDE2; --il-tan:#E2D3B5; --il-leaf:#87CC5A; --il-leaf-2:#52A436; --il-leaf-3:#3E8A2A;
+  --il-mint:#B4E5CC; --il-sky:#5BAFC1; --il-sky-2:#D4E5FF; --il-blue:#267DD3; --il-pink:#FFE9E9; --il-skin:#FFE3D6;
+  --il-yellow:#FFED83; --il-amber:#FFA843; --il-coral:#EA7870; --il-coral-2:#D95F58; --il-grey:#878584; --il-white:#FFFFFF;
+  --il-snow:#F6F9FF;
 }
 @media (prefers-color-scheme: dark){
   :root:not([data-theme="light"]){
@@ -53,12 +59,16 @@
   --shadow-2:0 2px 6px rgba(0,0,0,.35), 0 20px 42px -22px rgba(0,0,0,.85);
 }
 *{box-sizing:border-box}
-body{margin:0;background:var(--bg);color:var(--ink);font-family:var(--f-sans);font-size:15px;line-height:1.6;-webkit-text-size-adjust:100%}
+/* 화면 높이에 맞춰 머리말·본문·마을을 세로로 쌓고, 본문만 안에서 스크롤한다.
+   표든 카드든 마을 그림이 늘 화면 아래 같은 자리에 온다 */
+body{margin:0;background:var(--bg);color:var(--ink);font-family:var(--f-sans);font-size:15px;line-height:1.6;-webkit-text-size-adjust:100%;
+  height:100vh;height:100dvh;display:flex;flex-direction:column;overflow:hidden}
+.scroller{flex:1;min-height:0;overflow-y:auto;-webkit-overflow-scrolling:touch}
 button,input,select,textarea{font:inherit;color:inherit}
 :focus-visible{outline:2.5px solid var(--sun);outline-offset:2px;border-radius:6px}
 @media (prefers-reduced-motion: reduce){*{animation-duration:.01ms !important;transition-duration:.01ms !important}}
 
-.wrap{max-width:1280px;margin:0 auto;padding:0 18px 80px}
+.wrap{max-width:1280px;margin:0 auto;padding:0 18px 48px}
 
 /* ── 머리말 ─────────────────────────────── */
 .top{position:sticky;top:0;z-index:40;background:color-mix(in srgb,var(--bg) 90%,transparent);backdrop-filter:blur(10px);border-bottom:1px solid var(--line)}
@@ -262,8 +272,14 @@ legend{font-size:11px;letter-spacing:.08em;color:var(--muted);font-weight:700;pa
 
 /* ── 나머지 ─────────────────────────────── */
 .empty{text-align:center;padding:52px 20px 58px;border:1.5px dashed var(--line-2);border-radius:var(--r);background:var(--surface-2)}
-.empty .pic{margin:0 auto 16px;max-width:250px}
+.empty .pic{margin:0 auto 12px;max-width:330px}
 .empty .pic svg{width:100%;height:auto;display:block}
+svg.il *{vector-effect:non-scaling-stroke}
+/* 페이지 맨 아래 마을 — 좁은 화면에서는 가운데만 잘라 보여준다 */
+.town{max-width:1280px;width:100%;margin:-30px auto 0;padding:0 18px;pointer-events:none;user-select:none;flex:none}
+.top{flex:none}
+.town svg{width:100%;height:150px;display:block}
+body.booting .town{visibility:hidden}
 .empty h3{font-family:var(--f-display);font-size:19px;font-weight:400;margin:0 0 7px}
 .empty p{margin:0 0 18px;color:var(--muted);font-size:13.5px}
 .emptyBtns{display:flex;gap:9px;justify-content:center;flex-wrap:wrap}
@@ -296,6 +312,11 @@ legend{font-size:11px;letter-spacing:.08em;color:var(--muted);font-weight:700;pa
 .pblock-hd .pnet{font-family:var(--f-mono);font-size:13.5px;color:var(--accent);font-weight:500}
 .psum{margin-top:12px;padding-top:11px;border-top:1.5px solid var(--line);font-size:13px;color:var(--muted);text-align:right}
 .psum b{font-family:var(--f-mono);font-size:16px;color:var(--ink);font-weight:500}
+.arow{display:flex;gap:5px;flex-wrap:wrap}
+.cmd{margin:6px 0 0;padding:9px 12px;background:var(--surface-3);border-radius:var(--r-xs);
+  font-family:var(--f-mono);font-size:11.5px;overflow-x:auto;white-space:pre;color:var(--ink-2)}
+.btn.ghost.danger{color:var(--bad)}
+.btn.ghost.danger:hover{background:var(--bad-soft);color:var(--bad)}
 .bookName{font-weight:600;color:var(--ink);font-size:12.5px}
 .bookName b{color:var(--muted);font-weight:500}
 .bookSel{width:auto;padding:3px 8px;font-size:12.5px;border-radius:999px;border:1.5px solid var(--line-2);background:var(--surface)}
@@ -316,7 +337,7 @@ legend{font-size:11px;letter-spacing:.08em;color:var(--muted);font-weight:700;pa
 .dots i:nth-child(2){animation-delay:.14s}
 .dots i:nth-child(3){animation-delay:.28s}
 @keyframes bob{0%,100%{transform:translateY(0);opacity:.3}50%{transform:translateY(-8px);opacity:1}}
-@keyframes hunt{0%,100%{transform:translate(0,0)}30%{transform:translate(24px,-3px)}62%{transform:translate(48px,5px)}}
+@keyframes hunt{0%,100%{transform:translate(0,0)}30%{transform:translate(-5px,-4px)}62%{transform:translate(4px,-7px)}}
 .loading .mg{animation:hunt 3.2s ease-in-out infinite}
 body.booting #addBtn,body.booting .storage{visibility:hidden}
 @media (prefers-reduced-motion:reduce){.dots i,.loading .mg{animation:none}}
@@ -333,6 +354,8 @@ body.booting #addBtn,body.booting .storage{visibility:hidden}
   .views button{flex:1}
   .tools .storage{display:none}
   .strip{margin:14px 0}
+  .town{padding:0;margin-top:-24px}
+  .town svg{height:118px}
   .stat{flex:1 1 50%;border-bottom:1.5px solid var(--line)}
   .stat:nth-child(2n){border-right:0}
   .stat:nth-last-child(-n+2){border-bottom:0}
@@ -354,6 +377,7 @@ body.booting #addBtn,body.booting .storage{visibility:hidden}
       <button data-view="compare" aria-pressed="false">비교</button>
       <button data-view="budget" aria-pressed="false">예산</button>
       <button data-view="settings" aria-pressed="false">설정</button>
+      <button data-view="admin" aria-pressed="false" hidden>관리</button>
     </nav>
     <div class="tools">
       <span class="storage" id="storage"><span class="dot"></span><span id="storageText">저장 위치 확인 중</span></span>
@@ -362,11 +386,14 @@ body.booting #addBtn,body.booting .storage{visibility:hidden}
   </div>
 </header>
 
-<main class="wrap">
-  <section class="strip" id="strip"></section>
-  <div id="notice"></div>
-  <div id="view"></div>
-</main>
+<div class="scroller" id="scroller">
+  <main class="wrap">
+    <section class="strip" id="strip"></section>
+    <div id="notice"></div>
+    <div id="view"></div>
+  </main>
+</div>
+<footer class="town" id="town" aria-hidden="true"></footer>
 
 <div class="scrim" id="scrim"></div>
 <section class="sheet" id="sheet" role="dialog" aria-modal="true" aria-labelledby="sheetTitle">
@@ -682,7 +709,7 @@ const LS_P='househunt.props.v1', LS_S='househunt.settings.v1', LS_X='househunt.s
 const state = {
   props:{}, settings:JSON.parse(JSON.stringify(DEFAULT_SETTINGS)),
   view:'table', sort:{key:'score',dir:'desc'}, picks:[], editing:null, draft:null, loading:true,
-  book:null, books:[], members:[],
+  book:null, books:[], members:[], admin:null, isAdmin:false,
   samplesOff: (function(){ try{return localStorage.getItem(LS_X)==='1';}catch(e){return false;} })(),
   cmpSame:false
 };
@@ -721,6 +748,9 @@ const store = {
         this.user=await r.json(); this.mode='api'; this.photosOk=!!this.user.photos;
         state.book=this.user.book||null; state.books=this.user.books||[];
         this.photoStore=this.user.photoStore||''; this.photoMax=this.user.photoMax||0;
+        state.isAdmin=!!this.user.admin;
+        const ab=$('#views button[data-view="admin"]'); if(ab) ab.hidden=!state.isAdmin;
+        if(state.isAdmin) loadAdmin();
         this.clearLocal(); state.props={};
         try{ await this.pull(); }catch(e){ toast('내 매물을 불러오지 못했습니다'); }
         settled(); paintStorage(); render();
@@ -860,38 +890,282 @@ function ordered(){
 }
 
 /* ═══ 공통 조각 ══════════════════════════════ */
-const HOUSE_PIC='<svg viewBox="0 0 240 152" fill="none" stroke="var(--ink)" stroke-width="2.6" stroke-linejoin="round" stroke-linecap="round" aria-hidden="true">'+
+/* ═══ 일러스트 ══════════════════════════════
+ * 아이소메트릭(30°) 시점에 얇은 외곽선, 평면 파스텔 채색.
+ * 화면 좌표: sx=(x−y)·cos30, sy=(x+y)·sin30−z. x는 오른쪽 아래, y는 왼쪽 아래, z는 위.
+ */
+const ILL=(function(){
+  const C={line:'var(--il-line)',wall:'var(--il-wall)',tan:'var(--il-tan)',leaf:'var(--il-leaf)',leaf2:'var(--il-leaf-2)',
+    mint:'var(--il-mint)',sky:'var(--il-sky)',sky2:'var(--il-sky-2)',blue:'var(--il-blue)',pink:'var(--il-pink)',
+    skin:'var(--il-skin)',yellow:'var(--il-yellow)',coral:'var(--il-coral)',grey:'var(--il-grey)',white:'var(--il-white)',
+    snow:'var(--il-snow)',amber:'var(--il-amber)'};
+  /* 테마: 'plain' 또는 'xmas'(눈 덮인 지붕, 흰 땅, 눈사람, 트리). 11월~1월은 xmas */
+  let theme='plain';
+  const X=()=>theme==='xmas';
+  const G=()=>X()?C.snow:C.mint;
+  const CX=0.8660254, CY=0.5;
+  const r1=v=>Math.round(v*10)/10;
+  const pt=(x,y,z)=>[r1((x-y)*CX), r1((x+y)*CY-(z||0))];
+  const P=pts=>'M'+pts.map(p=>p[0]+' '+p[1]).join('L')+'Z';
+  const poly=(pts,fill,extra)=>'<path d="'+P(pts)+'" fill="'+fill+'"'+(extra||'')+'/>';
+
+  /* 상자 — 보이는 면은 왼쪽(y=d), 오른쪽(x=w), 윗면 */
+  function box(x,y,z,w,d,h,c){
+    c=c||{};
+    return poly([pt(x,y+d,z),pt(x+w,y+d,z),pt(x+w,y+d,z+h),pt(x,y+d,z+h)], c.left||C.wall)
+         + poly([pt(x+w,y,z),pt(x+w,y+d,z),pt(x+w,y+d,z+h),pt(x+w,y,z+h)], c.right||C.tan)
+         + (c.top===false?'':poly([pt(x,y,z+h),pt(x+w,y,z+h),pt(x+w,y+d,z+h),pt(x,y+d,z+h)], c.top||C.wall));
+  }
+  /* 오른쪽 면(x 고정)에 붙는 창 */
+  const winR=(x,y,z,w,h,fill)=>poly([pt(x,y,z),pt(x,y+w,z),pt(x,y+w,z+h),pt(x,y,z+h)], fill||C.sky2);
+  /* 왼쪽 면(y 고정)에 붙는 창·문 */
+  const winL=(x,y,z,w,h,fill)=>poly([pt(x,y,z),pt(x+w,y,z),pt(x+w,y,z+h),pt(x,y,z+h)], fill||C.sky2);
+
+  /* 박공지붕 집. 용마루는 x축 방향. o는 처마 */
+  function house(x,y,w,d,h,rh,c){
+    c=c||{}; const o=c.o==null?3:c.o, roof=c.roof||C.leaf, roof2=c.roof2||C.leaf2;
+    let s=box(x,y,0,w,d,h,{left:c.wall||C.wall,right:c.wall2||C.tan,top:false});
+    /* 문 왼쪽 면, 창 오른쪽 면 */
+    if(c.door!==false) s+=winL(x+w*0.6,y+d,0,w*0.22,h*0.62,c.doorFill||C.coral);
+    if(c.win!==false){ s+=winR(x+w,y+d*0.18,h*0.38,d*0.26,h*0.3); s+=winR(x+w,y+d*0.58,h*0.38,d*0.26,h*0.3); }
+    if(c.winL) s+=winL(x+w*0.15,y+d,h*0.4,w*0.25,h*0.28);
+    /* 굴뚝은 뒤쪽 경사면에 */
+    if(c.chimney) s+=box(x+w*0.7,y+d*0.18,h+rh*0.35,w*0.14,d*0.16,rh*0.75,{left:C.tan,right:C.grey,top:C.tan});
+    /* 박공 → (완만할 때만 보이는) 뒤 경사 → 앞 경사 */
+    s+=poly([pt(x+w,y,h),pt(x+w,y+d,h),pt(x+w,y+d/2,h+rh)], c.gable||c.wall2||C.tan);
+    if(rh < (d/2+o)*CY) s+=poly([pt(x-o,y-o,h),pt(x+w+o,y-o,h),pt(x+w+o,y+d/2,h+rh),pt(x-o,y+d/2,h+rh)], roof2);
+    s+=poly([pt(x-o,y+d+o,h),pt(x+w+o,y+d+o,h),pt(x+w+o,y+d/2,h+rh),pt(x-o,y+d/2,h+rh)], roof);
+    if(X()){
+      /* 지붕 위쪽 절반에 쌓인 눈, 굴뚝에서는 연기 */
+      const f=0.52, ys=y+d/2+(d/2+o)*f, zs=h+rh-rh*f;
+      s+=poly([pt(x-o,ys,zs),pt(x+w+o,ys,zs),pt(x+w+o,y+d/2,h+rh),pt(x-o,y+d/2,h+rh)], C.snow);
+      if(c.chimney){
+        const [cx,cy]=pt(x+w*0.77,y+d*0.26,h+rh*1.1);
+        s+='<circle cx="'+r1(cx+1)+'" cy="'+r1(cy-4)+'" r="2.2" fill="'+C.white+'"/>'+
+           '<circle cx="'+r1(cx+4)+'" cy="'+r1(cy-9.5)+'" r="3" fill="'+C.white+'"/>'+
+           '<circle cx="'+r1(cx+8.5)+'" cy="'+r1(cy-16)+'" r="3.8" fill="'+C.white+'"/>';
+      }
+    }
+    return s;
+  }
+  /* 평지붕 건물(빌라·아파트). 층마다 창 */
+  function block(x,y,w,d,h,floors,c){
+    c=c||{};
+    let s=box(x,y,0,w,d,h,{left:c.wall||C.wall,right:c.wall2||C.tan,top:X()?C.snow:(c.top||C.sky2)});
+    const fh=h/floors;
+    for(let f=0;f<floors;f++){
+      const z=fh*f+fh*0.28;
+      for(let i=0;i<(c.nr||2);i++) s+=winR(x+w,y+d*(0.12+i*0.44),z,d*0.28,fh*0.42,C.sky2);
+      for(let i=0;i<(c.nl||2);i++) s+=winL(x+w*(0.12+i*0.44),y+d,z,w*0.28,fh*0.42,f===0&&i===0&&c.door?C.coral:C.sky2);
+    }
+    /* 난간 */
+    s+=box(x,y,h,w,d,c.rail||2.5,{left:C.tan,right:C.grey,top:X()?C.snow:C.tan});
+    return s;
+  }
+  /* 둥근 나무 */
+  function tree(x,y,r,c){
+    const [sx,sy]=pt(x,y,0); const th=r*0.55, tw=r*0.4;
+    const cy=r1(sy-th-r*0.85);
+    return '<path d="M'+(sx-tw/2)+' '+(sy-th)+'v'+th+'a'+(tw/2)+' '+(tw/4)+' 0 0 0 '+tw+' 0v-'+th+'z" fill="'+C.tan+'"/>'+
+      '<circle cx="'+sx+'" cy="'+cy+'" r="'+r+'" fill="'+(c||C.leaf2)+'"/>'+
+      (X()?'<path d="M'+r1(sx-r*0.86)+' '+r1(cy-r*0.5)+'a'+r+' '+r+' 0 0 1 '+r1(r*1.72)+' 0q-'+r1(r*0.86)+' '+r1(r*0.45)+' -'+r1(r*1.72)+' 0z" fill="'+C.snow+'"/>':'');
+  }
+  /* 뾰족한 나무 */
+  function pineShape(sx,top,h,fill){
+    const w=h*0.5;
+    return '<path d="M'+sx+' '+r1(top)+'c'+r1(w*0.14)+' 0 '+r1(w*0.5)+' '+r1(h*0.72)+' '+r1(w*0.5)+' '+r1(h*0.86)+
+      'c0 '+r1(h*0.1)+' -'+r1(w*0.22)+' '+r1(h*0.16)+' -'+r1(w*0.5)+' '+r1(h*0.16)+
+      'c-'+r1(w*0.28)+' 0 -'+r1(w*0.5)+' -'+r1(h*0.06)+' -'+r1(w*0.5)+' -'+r1(h*0.16)+
+      'c0 -'+r1(h*0.14)+' '+r1(w*0.36)+' -'+r1(h*0.86)+' '+r1(w*0.5)+' -'+r1(h*0.86)+'z" fill="'+fill+'"/>';
+  }
+  function pine(x,y,h,c){
+    const [sx,sy]=pt(x,y,0); const th=h*0.16, tw=h*0.14, top=sy-th-h;
+    return '<path d="M'+(sx-tw/2)+' '+(sy-th)+'v'+th+'a'+(tw/2)+' '+(tw/4)+' 0 0 0 '+tw+' 0v-'+th+'z" fill="'+C.tan+'"/>'+
+      pineShape(sx,top,h,c||C.leaf)+
+      (X()?pineShape(sx,top,h*0.36,C.snow):'');
+  }
+  /* 크리스마스 트리 — 전나무에 방울과 별 */
+  function xmasTree(x,y,h){
+    const [sx,sy]=pt(x,y,0); const th=h*0.16, tw=h*0.14, top=sy-th-h, w=h*0.5;
+    let s='<path d="M'+(sx-tw/2)+' '+(sy-th)+'v'+th+'a'+(tw/2)+' '+(tw/4)+' 0 0 0 '+tw+' 0v-'+th+'z" fill="'+C.tan+'"/>'+
+      pineShape(sx,top,h,C.leaf2);
+    const cols=[C.coral,C.yellow,C.sky2,C.coral,C.yellow,C.sky2];
+    for(let i=0;i<6;i++){
+      const f=0.3+i*0.11, cx=sx+(i%2?1:-1)*w*(0.1+0.07*i)*0.9, cy=top+h*f;
+      s+='<circle cx="'+r1(cx)+'" cy="'+r1(cy)+'" r="'+r1(h*0.045)+'" fill="'+cols[i]+'"/>';
+    }
+    const R=h*0.11, r=R*0.45; let d='';
+    for(let i=0;i<10;i++){ const a=-Math.PI/2+i*Math.PI/5, rr=i%2?r:R; d+=(i?'L':'M')+r1(sx+Math.cos(a)*rr)+' '+r1(top-1+Math.sin(a)*rr); }
+    s+='<path d="'+d+'Z" fill="'+C.yellow+'"/>';
+    return s;
+  }
+  /* 눈사람 */
+  function snowman(x,y,r){
+    const [sx,sy]=pt(x,y,0); const r2=r*0.7, by=sy-r*0.85, hy=by-r-r2*0.75;
+    return '<circle cx="'+sx+'" cy="'+r1(by)+'" r="'+r+'" fill="'+C.white+'"/>'+
+      '<path d="M'+r1(sx-r*0.9)+' '+r1(by-r*0.3)+'l-'+r1(r*0.8)+' -'+r1(r*0.7)+'M'+r1(sx+r*0.9)+' '+r1(by-r*0.3)+'l'+r1(r*0.8)+' -'+r1(r*0.7)+'"/>'+
+      '<circle cx="'+sx+'" cy="'+r1(hy)+'" r="'+r1(r2)+'" fill="'+C.white+'"/>'+
+      '<path d="M'+r1(sx-r2*0.9)+' '+r1(hy+r2*0.75)+'q'+r1(r2*0.9)+' '+r1(r2*0.6)+' '+r1(r2*1.8)+' 0v'+r1(r2*0.35)+'q-'+r1(r2*0.9)+' '+r1(r2*0.6)+' -'+r1(r2*1.8)+' 0z" fill="'+C.coral+'"/>'+
+      '<rect x="'+r1(sx-r2*0.95)+'" y="'+r1(hy-r2*0.95)+'" width="'+r1(r2*1.9)+'" height="'+r1(r2*0.28)+'" rx="1" fill="'+C.line+'"/>'+
+      '<rect x="'+r1(sx-r2*0.6)+'" y="'+r1(hy-r2*1.75)+'" width="'+r1(r2*1.2)+'" height="'+r1(r2*0.85)+'" rx="1" fill="'+C.line+'"/>'+
+      '<circle cx="'+r1(sx-r2*0.3)+'" cy="'+r1(hy-r2*0.15)+'" r="'+r1(r2*0.1)+'" fill="'+C.line+'" stroke="none"/>'+
+      '<circle cx="'+r1(sx+r2*0.3)+'" cy="'+r1(hy-r2*0.15)+'" r="'+r1(r2*0.1)+'" fill="'+C.line+'" stroke="none"/>'+
+      '<path d="M'+r1(sx)+' '+r1(hy+r2*0.05)+'l'+r1(r2*0.55)+' '+r1(r2*0.15)+'l-'+r1(r2*0.55)+' '+r1(r2*0.2)+'z" fill="'+C.amber+'"/>'+
+      '<circle cx="'+sx+'" cy="'+r1(by-r*0.25)+'" r="'+r1(r*0.1)+'" fill="'+C.line+'" stroke="none"/>'+
+      '<circle cx="'+sx+'" cy="'+r1(by+r*0.2)+'" r="'+r1(r*0.1)+'" fill="'+C.line+'" stroke="none"/>';
+  }
+  /* 선물 상자 — 리본은 양 옆면 가운데를 지난다 */
+  function gift(x,y,w,c){
+    const h=w*0.85, rb=w*0.22, m=(w-rb)/2, col=c||C.coral;
+    return box(x,y,0,w,w,h,{left:col,right:col,top:col})+
+      winL(x+m,y+w,0,rb,h,C.yellow)+winR(x+w,y+m,0,rb,h,C.yellow)+
+      poly([pt(x+m,y,h),pt(x+m+rb,y,h),pt(x+m+rb,y+w,h),pt(x+m,y+w,h)],C.yellow)+
+      poly([pt(x,y+m,h),pt(x+w,y+m,h),pt(x+w,y+m+rb,h),pt(x,y+m+rb,h)],C.yellow);
+  }
+  /* 눈송이 — 화면 좌표 그대로 */
+  const flakes=pts=>pts.map(p=>'<circle cx="'+p[0]+'" cy="'+p[1]+'" r="'+(p[2]||2)+'" fill="'+C.white+'"/>').join('');
+  const bush=(x,y,r,c)=>{ const [sx,sy]=pt(x,y,0); return '<circle cx="'+sx+'" cy="'+r1(sy-r*0.7)+'" r="'+r+'" fill="'+(c||C.leaf)+'"/>'; };
+  /* 사람. 키 h. flip이면 왼쪽을 본다 */
+  function person(x,y,h,c){
+    c=c||{}; const [sx,sy]=pt(x,y,0); const u=h/10, top=sy-h;
+    const shirt=c.shirt||C.coral, pants=c.pants||C.blue, hair=c.hair||C.line;
+    let s='';
+    /* 다리 */
+    s+='<path d="M'+r1(sx-u*1.1)+' '+r1(sy-u*4.2)+'v'+r1(u*3.6)+'a'+r1(u*0.7)+' '+r1(u*0.35)+' 0 0 0 '+r1(u*1.4)+' 0v-'+r1(u*3.6)+'z" fill="'+pants+'"/>';
+    s+='<path d="M'+r1(sx+u*0.2)+' '+r1(sy-u*4.2)+'v'+r1(u*3.6)+'a'+r1(u*0.7)+' '+r1(u*0.35)+' 0 0 0 '+r1(u*1.4)+' 0v-'+r1(u*3.6)+'z" fill="'+pants+'"/>';
+    /* 몸통 */
+    s+='<rect x="'+r1(sx-u*1.6)+'" y="'+r1(top+u*2.9)+'" width="'+r1(u*3.4)+'" height="'+r1(u*4.3)+'" rx="'+r1(u*1.2)+'" fill="'+shirt+'"/>';
+    /* 머리 */
+    if(X()) s+='<rect x="'+r1(sx-u*1.5)+'" y="'+r1(top+u*2.95)+'" width="'+r1(u*3.2)+'" height="'+r1(u*0.9)+'" rx="'+r1(u*0.4)+'" fill="'+(c.scarf||C.leaf2)+'"/>';
+    s+='<circle cx="'+r1(sx+u*0.1)+'" cy="'+r1(top+u*1.7)+'" r="'+r1(u*1.6)+'" fill="'+C.skin+'"/>';
+    s+='<path d="M'+r1(sx-u*1.5)+' '+r1(top+u*1.6)+'a'+r1(u*1.6)+' '+r1(u*1.6)+' 0 0 1 '+r1(u*3.2)+' 0q-'+r1(u*0.4)+' -'+r1(u*0.5)+' -'+r1(u*1.2)+' -'+r1(u*0.3)+'q-'+r1(u*1.3)+' -'+r1(u*0.9)+' -'+r1(u*2)+' '+r1(u*0.3)+'z" fill="'+hair+'"/>';
+    if(c.magnifier){
+      const mx=sx+u*2.6, my=top+u*4.6;
+      s+='<g class="mg"><path d="M'+r1(mx+u*1.1)+' '+r1(my+u*1.1)+'l'+r1(u*1.5)+' '+r1(u*1.5)+'" stroke-width="2.4"/>'+
+         '<circle cx="'+r1(mx)+'" cy="'+r1(my)+'" r="'+r1(u*1.5)+'" fill="'+C.sky2+'" fill-opacity=".85"/></g>';
+    }
+    return s;
+  }
+  /* 동전 더미 */
+  function coins(x,y,n,r){
+    const [sx,sy]=pt(x,y,0); const ry=r*0.5, t=r*0.3; let s='';
+    for(let i=0;i<n;i++){
+      const cy=sy-t*i;
+      s+='<path d="M'+r1(sx-r)+' '+r1(cy-t)+'v'+r1(t)+'a'+r+' '+ry+' 0 0 0 '+(2*r)+' 0v-'+r1(t)+'z" fill="var(--il-amber)"/>';
+      s+='<ellipse cx="'+sx+'" cy="'+r1(cy-t)+'" rx="'+r+'" ry="'+ry+'" fill="'+C.yellow+'"/>';
+    }
+    return s;
+  }
+  /* 자동차 — 상자 둘에 바퀴 */
+  function car(x,y,c){
+    c=c||{}; const body=c.color||C.sky; let s='';
+    const [w1x,w1y]=pt(x+3,y+11,0),[w2x,w2y]=pt(x+21,y+11,0),[w3x,w3y]=pt(x+24,y+2,0);
+    s+='<ellipse cx="'+w1x+'" cy="'+r1(w1y-1.5)+'" rx="3.2" ry="2.2" fill="'+C.grey+'"/><ellipse cx="'+w2x+'" cy="'+r1(w2y-1.5)+'" rx="3.2" ry="2.2" fill="'+C.grey+'"/>';
+    s+=box(x,y,2,26,11,6,{left:body,right:body,top:body});
+    s+=box(x+7,y+0.5,8,13,10,5.5,{left:C.sky2,right:C.sky2,top:body});
+    s+='<ellipse cx="'+w3x+'" cy="'+r1(w3y-1.5)+'" rx="3" ry="2" fill="'+C.grey+'"/>';
+    return s;
+  }
   /* 구름 */
-  '<path d="M184 40a9 9 0 0 1 0-18 12 12 0 0 1 22-4 12 12 0 0 1 6 22z" fill="var(--surface)"/>'+
-  /* 돋보기 — 집을 찾아다니는 중 */
-  '<g class="mg"><path d="M67.5 47.5 78.5 58.5" stroke-width="5.5"/>'+
-  '<circle cx="55" cy="35" r="14.5" fill="var(--surface)"/></g>'+
-  /* 땅 */
-  '<rect x="5" y="126" width="230" height="17" rx="8.5" fill="var(--mint)"/>'+
-  /* 왼쪽 나무 */
-  '<path d="M15.5 126v-16"/><circle cx="15.5" cy="103" r="11" fill="var(--leaf)"/>'+
-  /* 작은 집 */
-  '<rect x="30" y="96" width="42" height="30" fill="var(--surface)"/>'+
-  '<path d="M24 96 51 73l27 23" fill="var(--leaf)"/>'+
-  '<rect x="34.5" y="101" width="9.5" height="9.5" rx="1.5" fill="var(--mint)"/>'+
-  '<rect x="52" y="110" width="13" height="16" rx="2" fill="var(--sun)"/>'+
-  /* 가운데 집 — 굴뚝을 먼저 그려 지붕이 덮게 한다 */
-  '<path d="M140 74V57h9.5v11" fill="var(--surface)"/>'+
-  '<rect x="92" y="82" width="62" height="44" fill="var(--surface)"/>'+
-  '<path d="M85 82 123 51l38 31" fill="var(--sun)"/>'+
-  '<rect x="98.5" y="90" width="15" height="15" rx="2" fill="var(--mint)"/>'+
-  '<path d="M106 90v15M98.5 97.5h15" stroke-width="2"/>'+
-  '<rect x="132.5" y="90" width="15" height="15" rx="2" fill="var(--mint)"/>'+
-  '<path d="M140 90v15M132.5 97.5h15" stroke-width="2"/>'+
-  '<rect x="113" y="104" width="20" height="22" rx="2.5" fill="var(--surface)"/>'+
-  '<circle cx="128" cy="116" r="1.9" fill="var(--ink)" stroke="none"/>'+
-  /* 오른쪽 집 */
-  '<rect x="174" y="100" width="40" height="26" fill="var(--surface)"/>'+
-  '<path d="M168 100 194 79l26 21" fill="var(--mint)"/>'+
-  '<rect x="184" y="106" width="11" height="11" rx="1.5" fill="var(--leaf)"/>'+
-  /* 오른쪽 나무 */
-  '<path d="M226 126v-14"/><circle cx="226" cy="105" r="9.5" fill="var(--leaf)"/>'+
-'</svg>';
+  const cloud=(cx,cy,s)=>'<path d="M'+cx+' '+cy+'a'+r1(s*.55)+' '+r1(s*.55)+' 0 0 1 0 -'+r1(s*1.1)+'a'+r1(s*.75)+' '+r1(s*.75)+' 0 0 1 '+r1(s*1.35)+' -'+r1(s*.25)+'a'+r1(s*.7)+' '+r1(s*.7)+' 0 0 1 '+r1(s*.35)+' '+r1(s*1.35)+'z" fill="'+C.white+'"/>';
+  /* 땅 — 둥글둥글한 민트 덩어리 */
+  const ground=(cx,cy,w,h,c)=>'<path d="M'+r1(cx-w/2)+' '+cy+
+    'c0 -'+r1(h*.55)+' '+r1(w*.18)+' -'+r1(h*.62)+' '+r1(w*.42)+' -'+r1(h*.5)+
+    'c'+r1(w*.12)+' -'+r1(h*.12)+' '+r1(w*.3)+' -'+r1(h*.1)+' '+r1(w*.42)+' '+r1(h*.1)+
+    'c'+r1(w*.16)+' '+r1(h*.25)+' '+r1(w*.16)+' '+r1(h*.55)+' -'+r1(w*.04)+' '+r1(h*.78)+
+    'c-'+r1(w*.2)+' '+r1(h*.25)+' -'+r1(w*.66)+' '+r1(h*.28)+' -'+r1(w*.8)+' 0z" fill="'+(c||G())+'"/>';
+
+  const svg=(vb,body,cls)=>'<svg class="il'+(cls?' '+cls:'')+'" viewBox="'+vb+'" fill="none" stroke="'+C.line+'" stroke-width="1.3" stroke-linejoin="round" stroke-linecap="round" aria-hidden="true">'+body+'</svg>';
+  const at=(x,y,body)=>'<g transform="translate('+x+' '+y+')">'+body+'</g>';
+
+  /* ── 장면들 ── */
+  const FL1=[[28,60,2.2],[70,22,1.8],[112,48,2.4],[160,18,2],[196,66,1.8],[244,26,2.4],[276,58,2],[130,84,1.6],[250,92,1.8],[40,104,1.8]];
+  function hunt(){
+    return svg('0 0 300 190',
+      cloud(214,42,12)+cloud(60,34,9)+(X()?flakes(FL1):'')+
+      ground(150,132,250,70)+
+      at(150,120,
+        (X()?xmasTree(-52,-6,54):pine(-52,-6,54))+
+        house(-22,-24,46,40,26,20,{chimney:true,winL:true})+
+        tree(46,-38,14)+(X()?snowman(64,-4,7):bush(58,-8,7))+
+        tree(-70,18,10,C.leaf)+
+        person(60,30,32,{magnifier:true})
+      ));
+  }
+  function compare(){
+    return svg('0 0 300 190',
+      cloud(236,40,11)+(X()?flakes(FL1):'')+
+      ground(150,134,262,70)+
+      at(150,122,
+        house(-78,-34,38,34,22,16,{roof:C.leaf,roof2:C.leaf2,winL:true})+
+        house(10,-40,38,34,26,18,{roof:C.sky,roof2:C.blue,wall:C.pink,wall2:C.tan})+
+        tree(-4,-70,11)+tree(66,-50,13)+(X()?snowman(-96,8,7):bush(-90,8,7))+
+        person(-2,26,32,{shirt:C.yellow,pants:C.grey,scarf:C.coral})+
+        '<g transform="translate(-26 -66)"><path d="M14 -12h30a5 5 0 0 1 5 5v14a5 5 0 0 1 -5 5h-18l-7 7v-7h-5a5 5 0 0 1 -5 -5v-14a5 5 0 0 1 5 -5z" fill="'+C.white+'"/>'+
+        '<text x="29" y="7" font-family="var(--f-display)" font-size="18" fill="'+C.line+'" stroke="none" text-anchor="middle">?</text></g>'
+      ));
+  }
+  function budget(){
+    return svg('0 0 300 190',
+      cloud(66,40,10)+(X()?flakes(FL1):'')+
+      ground(150,134,258,70)+
+      at(150,122,
+        (X()?xmasTree(-84,-30,44):pine(-84,-30,44))+
+        house(-6,-44,46,40,26,20,{roof:C.coral,roof2:'var(--il-coral-2)',winL:true,doorFill:C.sky,chimney:X()})+
+        tree(62,-30,13)+
+        coins(-60,10,6,10)+coins(-38,26,3,10)+coins(-82,26,2,10)+
+        (X()?gift(52,14,9,C.sky)+gift(66,22,7,C.coral):'')+
+        person(30,34,32,{shirt:C.sky,pants:C.grey,scarf:C.coral})
+      ));
+  }
+  /* 아래쪽 마을 띠. 화면 가로 위치 sx와 깊이 dp를 아이소 좌표로 바꿔 한 줄로 늘어놓는다 */
+  function town(){
+    const X=(sx,dp)=>[sx/(2*CX)+dp, -sx/(2*CX)+dp];
+    const H=(sx,dp,w,d,h,rh,c)=>{ const [x,y]=X(sx,dp); return house(x-w/2,y-d/2,w,d,h,rh,c); };
+    const B=(sx,dp,w,d,h,f,c)=>{ const [x,y]=X(sx,dp); return block(x-w/2,y-d/2,w,d,h,f,c); };
+    const T=(sx,dp,r,c)=>{ const [x,y]=X(sx,dp); return tree(x,y,r,c); };
+    const Pn=(sx,dp,h,c)=>{ const [x,y]=X(sx,dp); return pine(x,y,h,c); };
+    const Bu=(sx,dp,r,c)=>{ const [x,y]=X(sx,dp); return bush(x,y,r,c); };
+    const Pe=(sx,dp,h,c)=>{ const [x,y]=X(sx,dp); return person(x,y,h,c); };
+    const Ca=(sx,dp,c)=>{ const [x,y]=X(sx,dp); return car(x-13,y-5,c); };
+    const Xt=(sx,dp,h)=>{ const [x,y]=X(sx,dp); return xmasTree(x,y,h); };
+    const Sn=(sx,dp,r)=>{ const [x,y]=X(sx,dp); return snowman(x,y,r); };
+    const Gf=(sx,dp,w,c)=>{ const [x,y]=X(sx,dp); return gift(x-w/2,y-w/2,w,c); };
+    const xm=theme==='xmas';
+    /* 땅: 위쪽이 부드럽게 굽은 띠 */
+    let s=(xm?flakes([[30,30,2.2],[95,72,1.8],[170,18,2],[240,50,2.4],[330,26,1.8],[410,64,2],[500,14,2.2],[575,44,1.8],[650,22,2.4],[730,58,2],[820,16,1.8],[905,40,2.2],[985,68,1.8],[1060,24,2.4],[1130,52,2],[1185,18,1.8]]):'')+
+      '<path d="M-20 118c120 -14 260 -16 420 -8s300 14 440 6 260 -14 380 -4v50h-1240z" fill="'+G()+'"/>';
+    s+=at(0,118,
+      /* 뒤줄 */
+      Pn(40,-14,46)+T(150,-16,13)+B(258,-18,40,34,58,3,{door:true,top:C.sky2})+T(372,-18,14,C.leaf)+
+      (xm?Xt(470,-16,50):Pn(470,-16,42))+B(620,-20,48,40,72,4,{door:true,wall:C.pink,top:C.sky2})+T(725,-16,12)+Pn(842,-18,50)+
+      B(960,-18,44,38,60,3,{door:true,top:C.sky2})+T(1075,-16,14,C.leaf2)+(xm?Xt(1170,-14,48):Pn(1170,-14,44))+
+      /* 앞줄 */
+      H(90,4,40,34,22,16,{winL:true,chimney:xm})+(xm?Sn(140,12,6):Bu(135,12,7))+
+      Ca(200,10,{color:C.coral})+
+      H(318,2,44,36,24,18,{roof:C.sky,roof2:C.blue,wall:C.pink,chimney:true})+
+      Pe(385,14,30,{shirt:C.yellow,pants:C.blue,scarf:C.coral})+Pe(402,16,28,{shirt:C.sky,pants:C.grey,hair:C.tan})+
+      H(470,6,38,32,22,16,{roof:C.leaf,roof2:C.leaf2,winL:true})+(xm?Gf(524,10,8,C.coral)+Gf(538,14,6,C.sky):T(530,8,11))+
+      H(690,4,42,34,24,18,{roof:'var(--il-amber)',roof2:C.coral,chimney:true,winL:true})+(xm?Sn(748,12,7):Bu(742,14,8))+
+      Ca(790,10,{color:C.sky})+
+      H(880,2,40,34,22,16,{roof:C.sky,roof2:C.blue,winL:true,chimney:xm})+
+      Pe(940,14,30,{shirt:C.coral,pants:C.blue,magnifier:true})+
+      H(1050,4,46,38,26,20,{roof:C.leaf2,roof2:'var(--il-leaf-3)',chimney:true,winL:true})+(xm?Sn(1108,12,6):Bu(1105,14,7))+
+      H(1180,6,36,30,20,14,{roof:C.coral,roof2:'var(--il-coral-2)',wall:C.pink})
+    );
+    return svg('0 0 1200 150',s,'town').replace('<svg ','<svg preserveAspectRatio="xMidYMax slice" ');
+  }
+  function setTheme(t){ theme=t==='xmas'?'xmas':'plain'; }
+  return {hunt,compare,budget,town,setTheme,theme:()=>theme};
+})();
+/* 11월부터 1월까지는 크리스마스. 주소에 ?theme=xmas 나 ?theme=plain 을 붙이면 미리 볼 수 있다 */
+(function(){
+  const m=new Date().getMonth()+1;
+  let t=(m>=11||m===1)?'xmas':'plain';
+  try{ const q=new URLSearchParams(location.search).get('theme'); if(q==='xmas'||q==='plain') t=q; }catch(e){}
+  ILL.setTheme(t);
+})();
+const HOUSE_PIC=ILL.hunt();
 const STAR='<svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 2.6l2.9 5.9 6.5.95-4.7 4.58 1.11 6.47L12 17.45 6.19 20.5 7.3 14.03 2.6 9.45l6.5-.95z"/></svg>';
 function statusPill(p){ const s=STATUS.find(x=>x.k===p.status)||STATUS[0]; return '<span class="pill s-'+s.k+'">'+s.l+'</span>'; }
 function dealTag(p){ const d=p.dealType==='sale'?'sale':'jeonse'; return '<span class="tag '+d+'">'+(d==='sale'?'매매':'전세')+'</span>'; }
@@ -902,6 +1176,14 @@ function scoreCell(p){
 }
 function areaText(p){ const a=nm(p.area); if(a==null) return '—'; return a+' <span class="sub">/ '+fmtNum(pyeong(p),1)+'평</span>'; }
 function monthlyText(p){ const m=monthly(p,state.settings); return m==null?'—':fmtNum(m)+' <span class="sub">만/월</span>'; }
+
+/* 되돌릴 수 없는 단추는 한 번 더 눌러야 실행된다 */
+function arm(btn, ask, back){
+  if(btn.dataset.armed==='1'){ btn.dataset.armed=''; return true; }
+  btn.dataset.armed='1'; const was=btn.textContent; btn.textContent=ask;
+  setTimeout(()=>{ if(btn.dataset.armed==='1'){ btn.dataset.armed=''; btn.textContent=back||was; } },4000);
+  return false;
+}
 
 function toast(msg){
   const t=$('#toast'); t.textContent=msg; t.classList.add('show');
@@ -930,7 +1212,7 @@ function paintStorage(){
 /* ═══ 상단 요약 ══════════════════════════════ */
 function renderChrome(){
   const s=state.settings, list=allProps(), live=list.filter(p=>p.status!=='dropped');
-  if(state.loading || (!list.length && state.view!=='budget')){ $('#strip').innerHTML=''; $('#notice').innerHTML='';
+  if(state.loading || (!list.length && state.view!=='budget' && state.view!=='admin')){ $('#strip').innerHTML=''; $('#notice').innerHTML='';
     $$('#views button').forEach(b=>b.setAttribute('aria-pressed', String(b.dataset.view===state.view)));
     return; }
   const months=live.map(p=>monthly(p,s)).filter(v=>v!=null);
@@ -1142,7 +1424,7 @@ function renderCompare(){
   const byId={}; allProps().forEach(p=>byId[p.id]=p);
   const sel=state.picks.map(id=>byId[id]).filter(Boolean);
   if(sel.length<2){
-    return '<div class="empty"><div class="pic" aria-hidden="true">'+HOUSE_PIC+'</div>'+
+    return '<div class="empty"><div class="pic" aria-hidden="true">'+ILL.compare()+'</div>'+
       '<h3>나란히 놓고 볼 집을 골라 주세요</h3>'+
       '<p>표나 카드 화면에서 체크박스로 2~3곳을 선택하면 항목별로 나란히 놓고 봅니다.</p>'+
       '<button class="btn primary" data-go="table">표로 가기</button></div>';
@@ -1222,7 +1504,7 @@ function peoplePanel(people, plan){
     ? '<p class="byline">'+esc(others.map(m=>m.name||m.email.split('@')[0]).join(', '))+
       ' 님은 아직 안 적었습니다.</p>' : '';
 
-  return '<div class="panel"><h2>'+(alone?'내 돈':'각자 가진 돈')+'</h2>'+
+  return '<div class="panel"><h2>'+(alone?'내 예산':'각자 가진 돈')+'</h2>'+
     '<p class="desc">'+(alone
       ? '집에 넣을 수 있는 돈만 적으세요. 단위는 만원입니다. 5,000만원이면 5000, 3억이면 30000입니다.'
       : '각자 자기 것만 적으면 자동으로 합쳐집니다. 서로 덮어쓰지 않습니다. 단위는 만원이라 3억이면 30000입니다.')+'</p>'+
@@ -1290,8 +1572,8 @@ function budgetTopHTML(plan){
         '</div>'+
         '<p class="caution">직접 넣은 숫자로 계산한 참고값입니다. 실제 대출 한도와 금리, 세금은 은행과 세무서에서 확인하세요.</p>'+
       '</div>'
-    : '<div class="empty"><div class="pic" aria-hidden="true">'+HOUSE_PIC+'</div>'+
-      '<h3>얼마짜리 집이 맞을까</h3>'+
+    : '<div class="empty"><div class="pic" aria-hidden="true">'+ILL.budget()+'</div>'+
+      '<h3>내 예산에 맞는 집은?</h3>'+
       '<p>가진 돈과 버는 돈을 넣으면 매매와 전세로 얼마까지 볼 수 있는지 계산합니다.<br>표에 있는 집들이 예산에 맞는지도 같이 표시됩니다.</p></div>';
 
   return head;
@@ -1301,7 +1583,7 @@ function budgetFormHTML(people, plan){
   const s=state.settings, b=s.budget;
   return ''+
     peoplePanel(people, plan)+
-    '<div class="panel"><h2>함께 걸린 돈</h2>'+
+    '<div class="panel"><h2>우리의 예산</h2>'+
       '<p class="desc">누구 하나의 것이 아니라 집을 구하는 데 같이 쓰이는 돈입니다.</p>'+
       '<div class="fgrid">'+
         bfield('deposit','지금 집 보증금','만원','돌려받을 돈')+
@@ -1309,7 +1591,7 @@ function budgetFormHTML(people, plan){
         bfield('reserve','남겨둘 돈','만원','이사·가구')+
         bfield('investUse','주식을 집에 쓸 비율','%','80')+
       '</div></div>'+
-    '<div class="panel"><h2>매달 나가는 돈</h2>'+
+    '<div class="panel"><h2>고정지출</h2>'+
       '<p class="desc">월 단위로 적으세요. 집값을 뺀 생활비와, 집을 사더라도 매달 남기고 싶은 저축입니다.</p>'+
       '<div class="fgrid">'+
         bfield('living','월 생활비','만원','집값 빼고')+
@@ -1328,6 +1610,93 @@ function budgetFormHTML(people, plan){
         bfield('jeonseMax','전세 대출 상한액','만원','은행 한도')+
         bfield('jeonseCostRate','전세 부대비용','%','중개보수')+
       '</div></div>';
+}
+
+/* ═══ 관리 ══════════════════════════════════
+ * 관리자로 로그인했을 때만 보입니다. 서버가 한 번 더 확인합니다.
+ */
+function renderAdmin(){
+  const a=state.admin;
+  if(!a) return '<div class="empty"><div class="pic" aria-hidden="true">'+HOUSE_PIC+'</div>'+
+    '<h3>불러오는 중이에요</h3><p>회원과 장부 현황을 가져오고 있습니다.</p></div>';
+
+  const when=t=>{ if(!t) return '—'; const d=new Date(t);
+    return isNaN(d)?'—':(d.getFullYear()+'.'+pad(d.getMonth()+1)+'.'+pad(d.getDate())); };
+  const kb=n=>!n?'—':(n<1048576?Math.round(n/1024)+'KB':(n/1048576).toFixed(1)+'MB');
+  const bookOf=e=>a.books.filter(b=>b.owner_key===e).map(b=>b.name).join(', ')||'—';
+
+  const users=a.users.map(u=>{
+    const locked = u.locked && Number(u.locked)>Date.now();
+    return '<tr>'+
+      '<td><div class="mainCell"><span class="ava">'+esc((u.name||u.email).slice(0,1))+'</span>'+
+        '<div class="namebox"><div class="nm">'+esc(u.name||u.email.split("@")[0])+
+          (u.email===a.me?' <span class="sub">(나)</span>':'')+'</div>'+
+          '<div class="ad">'+esc(u.email)+'</div></div></div></td>'+
+      '<td class="num">'+u.books+'</td>'+
+      '<td>'+esc(bookOf(u.email))+'</td>'+
+      '<td class="sub">'+when(u.created_at)+'</td>'+
+      '<td class="sub">'+when(u.last_login)+'</td>'+
+      '<td>'+(locked?'<span class="pill s-dropped">잠김</span>':'<span class="sub">—</span>')+'</td>'+
+      '<td><div class="arow">'+
+        (locked?'<button class="btn sm" data-unlock="'+esc(u.email)+'">잠금 풀기</button>':'')+
+        '<button class="btn sm ghost" data-forcelogout="'+esc(u.email)+'">로그아웃</button>'+
+        (u.email===a.me?'':'<button class="btn sm ghost danger" data-deluser="'+esc(u.email)+'">삭제</button>')+
+      '</div></td></tr>';
+  }).join('');
+
+  const books=a.books.map(b=>'<tr>'+
+    '<td><div class="namebox"><div class="nm">'+esc(b.name)+'</div>'+
+      '<div class="ad">'+esc(b.owner_key)+'</div></div></td>'+
+    '<td class="num">'+b.people+'</td>'+
+    '<td class="num">'+b.props+'</td>'+
+    '<td class="num">'+b.photos+'</td>'+
+    '<td class="num sub">'+kb(b.bytes)+'</td>'+
+    '<td class="sub">'+when(b.created_at)+'</td>'+
+    '<td><button class="btn sm ghost danger" data-delbook="'+esc(b.id)+'" data-bookname="'+esc(b.name)+'">삭제</button></td>'+
+  '</tr>').join('');
+
+  const totalProps=a.books.reduce((x,b)=>x+b.props,0);
+  const totalBytes=a.books.reduce((x,b)=>x+(b.bytes||0),0);
+
+  return '<div class="strip" style="margin-top:0">'+
+      '<div class="stat"><div class="k">회원</div><div class="v">'+a.users.length+' <small>명</small></div></div>'+
+      '<div class="stat"><div class="k">장부</div><div class="v">'+a.books.length+' <small>개</small></div></div>'+
+      '<div class="stat"><div class="k">매물</div><div class="v">'+totalProps+' <small>곳</small></div></div>'+
+      '<div class="stat"><div class="k">사진</div><div class="v">'+kb(totalBytes)+'</div></div>'+
+      '<div class="stat"><div class="k">살아 있는 초대</div><div class="v">'+a.liveInvites+' <small>개</small></div></div>'+
+    '</div>'+
+    '<div class="panel"><h2>회원</h2>'+
+      '<p class="desc">가입 창구는 지금 '+(a.signupOpen?'<b>열려 있습니다</b>. 가입 코드를 아는 사람은 자기 장부를 새로 만들 수 있습니다':'<b>닫혀 있습니다</b>. 초대 링크로만 들어올 수 있습니다')+'. 이 설정은 wrangler secret 으로 바꿉니다.</p>'+
+      '<div class="tablewrap"><table class="grid" style="min-width:840px"><thead><tr>'+
+        '<th class="c-main">회원</th><th class="num">장부</th><th>주인인 장부</th>'+
+        '<th>가입</th><th>마지막 로그인</th><th>상태</th><th>할 일</th>'+
+      '</tr></thead><tbody>'+users+'</tbody></table></div></div>'+
+    '<div class="panel"><h2>백업</h2>'+
+      '<p class="desc">이 서비스의 데이터는 Cloudflare D1 한 곳에 있습니다. 사진도 거기 같이 들어 있습니다. 아래 세 가지를 함께 쓰시면 됩니다.</p>'+
+      '<div class="steps">'+
+        '<div class="step"><span class="n">1</span><div><b>되돌리기 — 지난 30일 아무 시점으로</b>'+
+          '<p>D1이 스스로 모든 변경을 기록해 둡니다. 실수로 지웠을 때 그 직전으로 되돌릴 수 있습니다. 따로 켤 것도, 돈 들 것도 없습니다.</p>'+
+          '<pre class="cmd">npx wrangler d1 time-travel restore house-hunt --timestamp=2026-09-14T09:00:00Z</pre></div></div>'+
+        '<div class="step"><span class="n">2</span><div><b>통째로 내려받기 — 복구까지 되는 완전한 사본</b>'+
+          '<p>비밀번호와 사진까지 전부 들어 있는 SQL 파일입니다. 큰일을 앞두고 한 번씩 떠두세요.</p>'+
+          '<pre class="cmd">npx wrangler d1 export house-hunt --remote --output=backup.sql</pre></div></div>'+
+        '<div class="step"><span class="n">3</span><div><b>지금 바로 — 매물과 장부만</b>'+
+          '<p>사람이 읽을 수 있는 JSON입니다. 비밀번호와 사진 본체는 빼고 받습니다.</p>'+
+          '<button class="btn primary sm" id="dumpJson" style="margin-top:6px">데이터 내려받기</button></div></div>'+
+      '</div></div>'+
+    '<div class="panel"><h2>장부</h2>'+
+      '<p class="desc">장부를 지우면 그 안의 매물과 사진, 설정이 함께 사라집니다. 되돌릴 수 없습니다.</p>'+
+      '<div class="tablewrap"><table class="grid" style="min-width:720px"><thead><tr>'+
+        '<th class="c-main">장부</th><th class="num">사람</th><th class="num">매물</th>'+
+        '<th class="num">사진</th><th class="num">용량</th><th>만든 날</th><th>할 일</th>'+
+      '</tr></thead><tbody>'+books+'</tbody></table></div></div>';
+}
+function pad(n){ return n<10?'0'+n:''+n; }
+
+async function loadAdmin(){
+  try{ state.admin=await store.call('GET','/api/admin/overview'); }
+  catch(e){ state.admin=null; toast(e.message); }
+  if(state.view==='admin') render();
 }
 
 /* ═══ 설정 ══════════════════════════════════ */
@@ -1484,11 +1853,12 @@ function render(){
   else if(state.view==='cards')   v.innerHTML=renderCards();
   else if(state.view==='compare') v.innerHTML=renderCompare();
   else if(state.view==='budget')  v.innerHTML=renderBudget();
+  else if(state.view==='admin')   v.innerHTML=renderAdmin();
   else                            v.innerHTML=renderSettings();
 }
 
 /* ═══ 동작 ══════════════════════════════════ */
-function setView(v){ state.view=v; render(); window.scrollTo({top:0,behavior:'instant'}); }
+function setView(v){ state.view=v; render(); $('#scroller').scrollTo({top:0,behavior:'instant'}); }
 function setSort(k){
   if(state.sort.key===k) state.sort.dir = state.sort.dir==='asc'?'desc':'asc';
   else state.sort={key:k, dir:(k==='name'||k==='moveIn'||k==='status')?'asc':(k==='score'?'desc':'asc')};
@@ -1580,7 +1950,7 @@ function refreshPhotos(){
 
 /* ═══ 이벤트 ════════════════════════════════ */
 document.addEventListener('click', e=>{
-  const t=e.target.closest('[data-view],[data-sort],[data-order],[data-edit],[data-move],[data-zoom],[data-go],[data-star],[data-rweight],[data-rdel],[data-rmphoto],[data-logout],[data-add],[data-kick],button');
+  const t=e.target.closest('[data-view],[data-sort],[data-order],[data-edit],[data-move],[data-zoom],[data-go],[data-star],[data-rweight],[data-rdel],[data-rmphoto],[data-logout],[data-add],[data-kick],[data-unlock],[data-forcelogout],[data-deluser],[data-delbook],button');
   if(!t) return;
 
   if(t.dataset.view){ setView(t.dataset.view); return; }
@@ -1590,9 +1960,32 @@ document.addEventListener('click', e=>{
   if(t.dataset.move){ move(t.dataset.id,t.dataset.move); return; }
   if(t.dataset.edit){ openSheet(t.dataset.edit); return; }
   if(t.dataset.add){ openSheet(null); return; }
+  if(t.dataset.unlock){
+    store.call('POST','/api/admin/unlock',{email:t.dataset.unlock})
+      .then(()=>{ toast('잠금을 풀었습니다'); return loadAdmin(); }).catch(e=>toast(e.message));
+    return;
+  }
+  if(t.dataset.forcelogout){
+    if(!arm(t,'모든 기기에서 나가게 할까요?','로그아웃')) return;
+    store.call('POST','/api/admin/logout',{email:t.dataset.forcelogout})
+      .then(()=>{ toast('그 회원의 로그인을 모두 끊었습니다'); return loadAdmin(); }).catch(e=>toast(e.message));
+    return;
+  }
+  if(t.dataset.deluser){
+    if(!arm(t,'계정과 그가 만든 장부까지 지울까요?','삭제')) return;
+    store.call('DELETE','/api/admin/users/'+encodeURIComponent(t.dataset.deluser))
+      .then(j=>{ toast('계정을 지웠습니다'+(j.droppedBooks?' · 장부 '+j.droppedBooks+'개 포함':'')); return loadAdmin(); })
+      .catch(e=>toast(e.message));
+    return;
+  }
+  if(t.dataset.delbook){
+    if(!arm(t,'"'+(t.dataset.bookname||'')+'"를 통째로 지울까요?','삭제')) return;
+    store.call('DELETE','/api/admin/books/'+encodeURIComponent(t.dataset.delbook))
+      .then(()=>{ toast('장부를 지웠습니다'); return loadAdmin(); }).catch(e=>toast(e.message));
+    return;
+  }
   if(t.dataset.kick){
-    if(t.dataset.armed!=='1'){ t.dataset.armed='1'; t.textContent='정말 내보낼까요?';
-      setTimeout(()=>{ if(t.dataset.armed==='1'){ t.dataset.armed=''; t.textContent='내보내기'; } },4000); return; }
+    if(!arm(t,'정말 내보낼까요?','내보내기')) return;
     store.call('DELETE','/api/members/'+encodeURIComponent(t.dataset.kick))
       .then(()=>store.pull()).then(()=>{ toast('내보냈습니다'); render(); })
       .catch(e=>toast(e.message));
@@ -1637,6 +2030,19 @@ document.addEventListener('click', e=>{
       closeSheet(); break;
     }
     case 'goCompare': setView('compare'); break;
+    case 'dumpJson': {
+      t.disabled=true; t.textContent='모으는 중…';
+      store.call('GET','/api/admin/export').then(j=>{
+        const blob=new Blob([JSON.stringify(j,null,2)],{type:'application/json'});
+        const a=document.createElement('a');
+        a.href=URL.createObjectURL(blob);
+        a.download='하우스헌팅-'+new Date().toISOString().slice(0,10)+'.json';
+        document.body.appendChild(a); a.click(); a.remove();
+        setTimeout(()=>URL.revokeObjectURL(a.href),1000);
+        toast('내려받았습니다');
+      }).catch(e=>toast(e.message)).then(()=>{ t.disabled=false; t.textContent='데이터 내려받기'; });
+      break;
+    }
     case 'makeInvite': {
       t.disabled=true; t.textContent='만드는 중…';
       store.call('POST','/api/book/invite',{}).then(j=>{
@@ -1660,8 +2066,7 @@ document.addEventListener('click', e=>{
       store.call('DELETE','/api/book/invite').then(()=>{ toast('초대 링크를 껐습니다'); render(); }).catch(e=>toast(e.message));
       break;
     case 'leaveBook': {
-      if(t.dataset.armed!=='1'){ t.dataset.armed='1'; t.textContent='정말 나갈까요?';
-        setTimeout(()=>{ if(t.dataset.armed==='1'){ t.dataset.armed=''; t.textContent='이 장부에서 나가기'; } },4000); break; }
+      if(!arm(t,'정말 나갈까요?','이 장부에서 나가기')) break;
       store.call('POST','/api/book/leave',{}).then(()=>location.reload()).catch(e=>toast(e.message));
       break;
     }
@@ -1744,6 +2149,7 @@ $('#scrim').addEventListener('click', closeSheet);
 $('#lightbox').addEventListener('click', function(){ this.classList.remove('open'); });
 
 /* ═══ 시작 ══════════════════════════════════ */
+$('#town').innerHTML=ILL.town();
 store.loadLocal();
 paintStorage();
 render();
