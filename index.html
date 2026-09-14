@@ -276,7 +276,7 @@ legend{font-size:11px;letter-spacing:.08em;color:var(--muted);font-weight:700;pa
 .empty .pic svg{width:100%;height:auto;display:block}
 svg.il *{vector-effect:non-scaling-stroke}
 /* 페이지 맨 아래 마을 — 좁은 화면에서는 가운데만 잘라 보여준다 */
-.town{max-width:1440px;width:100%;margin:-30px auto 0;padding:0 18px;pointer-events:none;user-select:none;flex:none}
+.town{width:100%;margin:-30px 0 0;padding:0;pointer-events:none;user-select:none;flex:none;overflow:hidden}
 .top{flex:none}
 .town svg{width:100%;height:150px;display:block}
 body.booting .town{visibility:hidden}
@@ -354,7 +354,7 @@ body.booting #addBtn,body.booting .storage{visibility:hidden}
   .views button{flex:1}
   .tools .storage{display:none}
   .strip{margin:14px 0}
-  .town{padding:0;margin-top:-24px}
+  .town{margin-top:-24px}
   .town svg{height:118px}
   .stat{flex:1 1 50%;border-bottom:1.5px solid var(--line)}
   .stat:nth-child(2n){border-right:0}
@@ -1118,7 +1118,9 @@ const ILL=(function(){
         person(30,34,32,{shirt:C.sky,pants:C.grey,scarf:C.coral})
       ));
   }
-  /* 아래쪽 마을 띠. 화면 가로 위치 sx와 깊이 dp를 아이소 좌표로 바꿔 한 줄로 늘어놓는다 */
+  /* 아래쪽 마을 띠. 화면 가로 위치 sx와 깊이 dp를 아이소 좌표로 바꿔 한 줄로 늘어놓는다.
+   * 2400 단위 폭으로 그리고 화면 폭만큼 가운데를 잘라 보여준다. 집 크기는 화면이 넓어도 그대로다 */
+  const TOWN_W=2400;
   function town(){
     const X=(sx,dp)=>[sx/(2*CX)+dp, -sx/(2*CX)+dp];
     const H=(sx,dp,w,d,h,rh,c)=>{ const [x,y]=X(sx,dp); return house(x-w/2,y-d/2,w,d,h,rh,c); };
@@ -1132,28 +1134,36 @@ const ILL=(function(){
     const Sn=(sx,dp,r)=>{ const [x,y]=X(sx,dp); return snowman(x,y,r); };
     const Gf=(sx,dp,w,c)=>{ const [x,y]=X(sx,dp); return gift(x-w/2,y-w/2,w,c); };
     const xm=theme==='xmas';
-    /* 땅: 위쪽이 부드럽게 굽은 띠 */
-    let s=(xm?flakes([[30,30,2.2],[95,72,1.8],[170,18,2],[240,50,2.4],[330,26,1.8],[410,64,2],[500,14,2.2],[575,44,1.8],[650,22,2.4],[730,58,2],[820,16,1.8],[905,40,2.2],[985,68,1.8],[1060,24,2.4],[1130,52,2],[1185,18,1.8]]):'')+
-      '<path d="M-20 118c120 -14 260 -16 420 -8s300 14 440 6 260 -14 380 -4v50h-1240z" fill="'+G()+'"/>';
-    s+=at(0,118,
+    /* 1200 폭짜리 한 구간. alt면 지붕색과 나무를 바꿔 두 구간이 똑같아 보이지 않게 */
+    const A=(o,alt)=>{
+      const R1=alt?{roof:C.coral,roof2:'var(--il-coral-2)'}:{roof:C.leaf,roof2:C.leaf2};
+      const R2=alt?{roof:C.leaf2,roof2:'var(--il-leaf-3)'}:{roof:C.sky,roof2:C.blue};
+      const R3=alt?{roof:C.sky,roof2:C.blue}:{roof:'var(--il-amber)',roof2:C.coral};
+      return (
       /* 뒤줄 */
-      Pn(40,-14,46)+T(150,-16,13)+B(258,-18,40,34,58,3,{door:true,top:C.sky2})+T(372,-18,14,C.leaf)+
-      (xm?Xt(470,-16,50):Pn(470,-16,42))+B(620,-20,48,40,72,4,{door:true,wall:C.pink,top:C.sky2})+T(725,-16,12)+Pn(842,-18,50)+
-      B(960,-18,44,38,60,3,{door:true,top:C.sky2})+T(1075,-16,14,C.leaf2)+(xm?Xt(1170,-14,48):Pn(1170,-14,44))+
+      (alt?T(o+40,-14,14,C.leaf2):Pn(o+40,-14,46))+T(o+150,-16,13)+B(o+258,-18,40,34,58,3,{door:true,top:C.sky2})+T(o+372,-18,14,C.leaf)+
+      (xm?Xt(o+470,-16,50):Pn(o+470,-16,42))+B(o+620,-20,48,40,72,4,{door:true,wall:alt?C.wall:C.pink,top:C.sky2})+T(o+725,-16,12)+Pn(o+842,-18,50)+
+      B(o+960,-18,44,38,60,3,{door:true,wall:alt?C.pink:C.wall,top:C.sky2})+T(o+1075,-16,14,C.leaf2)+(xm?Xt(o+1170,-14,48):(alt?T(o+1170,-14,13):Pn(o+1170,-14,44)))+
       /* 앞줄 */
-      H(90,4,40,34,22,16,{winL:true,chimney:xm})+(xm?Sn(140,12,6):Bu(135,12,7))+
-      Ca(200,10,{color:C.coral})+
-      H(318,2,44,36,24,18,{roof:C.sky,roof2:C.blue,wall:C.pink,chimney:true})+
-      Pe(385,14,30,{shirt:C.yellow,pants:C.blue,scarf:C.coral})+Pe(402,16,28,{shirt:C.sky,pants:C.grey,hair:C.tan})+
-      H(470,6,38,32,22,16,{roof:C.leaf,roof2:C.leaf2,winL:true})+(xm?Gf(524,10,8,C.coral)+Gf(538,14,6,C.sky):T(530,8,11))+
-      H(690,4,42,34,24,18,{roof:'var(--il-amber)',roof2:C.coral,chimney:true,winL:true})+(xm?Sn(748,12,7):Bu(742,14,8))+
-      Ca(790,10,{color:C.sky})+
-      H(880,2,40,34,22,16,{roof:C.sky,roof2:C.blue,winL:true,chimney:xm})+
-      Pe(940,14,30,{shirt:C.coral,pants:C.blue,magnifier:true})+
-      H(1050,4,46,38,26,20,{roof:C.leaf2,roof2:'var(--il-leaf-3)',chimney:true,winL:true})+(xm?Sn(1108,12,6):Bu(1105,14,7))+
-      H(1180,6,36,30,20,14,{roof:C.coral,roof2:'var(--il-coral-2)',wall:C.pink})
-    );
-    return svg('0 0 1200 150',s,'town').replace('<svg ','<svg preserveAspectRatio="xMidYMax slice" ');
+      H(o+90,4,40,34,22,16,Object.assign({winL:true,chimney:xm},alt?R3:{}))+(xm?Sn(o+140,12,6):Bu(o+135,12,7))+
+      Ca(o+200,10,{color:alt?C.yellow:C.coral})+
+      H(o+318,2,44,36,24,18,Object.assign({wall:C.pink,chimney:true},R2))+
+      Pe(o+385,14,30,{shirt:alt?C.sky:C.yellow,pants:C.blue,scarf:C.coral})+Pe(o+402,16,28,{shirt:alt?C.coral:C.sky,pants:C.grey,hair:C.tan})+
+      H(o+470,6,38,32,22,16,Object.assign({winL:true},R1))+(xm?Gf(o+524,10,8,C.coral)+Gf(o+538,14,6,C.sky):T(o+530,8,11))+
+      H(o+690,4,42,34,24,18,Object.assign({chimney:true,winL:true},R3))+(xm?Sn(o+748,12,7):Bu(o+742,14,8))+
+      Ca(o+790,10,{color:alt?C.grey:C.sky})+
+      H(o+880,2,40,34,22,16,Object.assign({winL:true,chimney:xm},R2))+
+      (alt?Pe(o+940,14,30,{shirt:C.leaf2,pants:C.grey,hair:C.tan}):Pe(o+940,14,30,{shirt:C.coral,pants:C.blue,magnifier:true}))+
+      H(o+1050,4,46,38,26,20,Object.assign({chimney:true,winL:true},alt?R2:{roof:C.leaf2,roof2:'var(--il-leaf-3)'}))+(xm?Sn(o+1108,12,6):Bu(o+1105,14,7))+
+      H(o+1180,6,36,30,20,14,Object.assign({wall:C.pink},alt?R1:{roof:C.coral,roof2:'var(--il-coral-2)'}))
+      );
+    };
+    const FL=[[30,30,2.2],[95,72,1.8],[170,18,2],[240,50,2.4],[330,26,1.8],[410,64,2],[500,14,2.2],[575,44,1.8],[650,22,2.4],[730,58,2],[820,16,1.8],[905,40,2.2],[985,68,1.8],[1060,24,2.4],[1130,52,2],[1185,18,1.8]];
+    /* 땅: 위쪽이 부드럽게 굽은 띠, 두 구간에 걸쳐 이어진다 */
+    let s=(xm?flakes(FL.concat(FL.map(f=>[f[0]+1200,f[1]+6,f[2]]))):'')+
+      '<path d="M-20 118c120 -14 260 -16 420 -8s300 14 440 6 260 -14 380 -4s260 14 420 6 300 -14 440 -6 200 10 340 2v50h-2440z" fill="'+G()+'"/>';
+    s+=at(0,118, A(0,false)+A(1200,true));
+    return svg('0 0 '+TOWN_W+' 150',s,'town').replace('<svg ','<svg preserveAspectRatio="xMidYMax slice" ');
   }
   function setTheme(t){ theme=t==='xmas'?'xmas':'plain'; }
   return {hunt,compare,budget,town,setTheme,theme:()=>theme};
