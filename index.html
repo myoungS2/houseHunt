@@ -288,6 +288,14 @@ legend{font-size:11px;letter-spacing:.08em;color:var(--muted);font-weight:700;pa
 .step p{margin:3px 0 0;font-size:12.5px;color:var(--muted);line-height:1.6;max-width:64ch}
 .caution{margin:18px 0 0;padding:11px 14px;border-radius:var(--r-s);background:var(--surface-2);border:1px dashed var(--line-2);font-size:12px;color:var(--muted);line-height:1.55}
 .fhint{color:var(--line-2);font-weight:400}
+.pblock{border:1.5px solid var(--line);border-radius:var(--r-s);padding:13px 15px;margin-bottom:11px;background:var(--surface-2)}
+.pblock.alone{border:0;padding:0;background:transparent;margin-bottom:0}
+.pblock-hd{display:flex;align-items:center;gap:9px;margin-bottom:11px;padding-bottom:9px;border-bottom:1px solid var(--line)}
+.pblock-hd .pnm{font-weight:600;font-size:14px;flex:1}
+.pblock-hd .pnm b{font-weight:500;color:var(--muted);font-size:12px}
+.pblock-hd .pnet{font-family:var(--f-mono);font-size:13.5px;color:var(--accent);font-weight:500}
+.psum{margin-top:12px;padding-top:11px;border-top:1.5px solid var(--line);font-size:13px;color:var(--muted);text-align:right}
+.psum b{font-family:var(--f-mono);font-size:16px;color:var(--ink);font-weight:500}
 .bookName{font-weight:600;color:var(--ink);font-size:12.5px}
 .bookName b{color:var(--muted);font-weight:500}
 .bookSel{width:auto;padding:3px 8px;font-size:12.5px;border-radius:999px;border:1.5px solid var(--line-2);background:var(--surface)}
@@ -403,10 +411,19 @@ const DEFAULT_RATINGS = [
   {key:'kitchen',label:'주방',        weight:1},
   {key:'bath',   label:'욕실',        weight:1}
 ];
+/* 돈은 사람마다 따로 적고 합칩니다. people = {이메일: {cash,invest,subscription,etc,income,debt,debtMonthly}} */
+const PERSON_FIELDS = [
+  {k:'cash',        l:'현금 · 예적금', u:'만원'},
+  {k:'invest',      l:'주식 · 펀드 등', u:'만원', ph:'평가액'},
+  {k:'subscription',l:'청약통장',      u:'만원'},
+  {k:'etc',         l:'그 밖에',       u:'만원'},
+  {k:'income',      l:'월 실수령',     u:'만원', ph:'세후'},
+  {k:'debt',        l:'갚는 빚 잔액',  u:'만원'},
+  {k:'debtMonthly', l:'빚 월 상환액',  u:'만원'}
+];
 const DEFAULT_BUDGET = {
-  cash:null, invest:null, investUse:80, deposit:null, subscription:null, support:null, etcAsset:null,
-  debt:null, debtMonthly:null, reserve:null,
-  incomes:{}, otherIncome:null,
+  people:null, investUse:80,
+  deposit:null, support:null, reserve:null, otherIncome:null,
   living:null, save:null,
   years:30, ltv:70, dsr:40, costRate:2.5,
   jeonseRate:null, jeonseLtv:80, jeonseMax:null, jeonseCostRate:0.4
@@ -551,8 +568,28 @@ function score(p,s){
 function mergeSettings(raw){
   const out=Object.assign({},DEFAULT_SETTINGS,raw||{});
   out.budget=Object.assign({},DEFAULT_BUDGET,(raw&&raw.budget)||{});
-  out.budget.incomes=Object.assign({},(raw&&raw.budget&&raw.budget.incomes)||{});
   return out;
+}
+
+/* 사람마다 적은 돈. 예전에 한 칸에 적어둔 값은 장부 주인이 적은 것으로 봅니다. */
+function budgetPeople(b){
+  if(b.people && typeof b.people==='object') return b.people;
+  const who = state.book ? state.book.owner : ((store.user||{}).email||'me');
+  const out = {};
+  Object.keys(b.incomes||{}).forEach(k=>{ out[k]={income:b.incomes[k]}; });
+  out[who] = Object.assign({}, out[who]||{}, {
+    cash:b.cash, invest:b.invest, subscription:b.subscription, etc:b.etcAsset,
+    debt:b.debt, debtMonthly:b.debtMonthly
+  });
+  return out;
+}
+function budgetSum(b,f){
+  const P=budgetPeople(b);
+  return Object.keys(P).reduce((a,k)=>a+(nm(P[k][f])||0),0);
+}
+function personNet(b,p){
+  const use=(nm(b.investUse)!=null?nm(b.investUse):80)/100;
+  return (nm(p.cash)||0)+(nm(p.invest)||0)*use+(nm(p.subscription)||0)+(nm(p.etc)||0)-(nm(p.debt)||0);
 }
 
 /* ═══ 예산 ══════════════════════════════════
@@ -576,15 +613,17 @@ function budgetPlan(s){
   const b=s.budget||DEFAULT_BUDGET, v=k=>nm(b[k])||0;
   const rate=nm(s.loanRate)||0, years=nm(b.years)||30;
 
-  /* 모을 수 있는 내 돈 */
-  const investUsable = v('invest')*(nm(b.investUse)!=null?nm(b.investUse):80)/100;
-  const assets = v('cash')+investUsable+v('deposit')+v('subscription')+v('support')+v('etcAsset');
-  const equity = Math.max(0, assets - v('debt') - v('reserve'));
+  /* 모을 수 있는 내 돈 — 각자 적은 것을 합친다 */
+  const sum = f => budgetSum(b,f);
+  const investUsable = sum('invest')*(nm(b.investUse)!=null?nm(b.investUse):80)/100;
+  const assets = sum('cash')+investUsable+sum('subscription')+sum('etc')+v('deposit')+v('support');
+  const debt = sum('debt'), debtMonthly = sum('debtMonthly');
+  const equity = Math.max(0, assets - debt - v('reserve'));
 
   /* 매달 낼 수 있는 돈 — 현금흐름과 DSR 중 작은 쪽 */
-  const income = Object.values(b.incomes||{}).reduce((a,x)=>a+(nm(x)||0),0) + v('otherIncome');
-  const flow = Math.max(0, income - v('living') - v('save') - v('debtMonthly'));
-  const dsrCap = Math.max(0, income*(nm(b.dsr)||40)/100 - v('debtMonthly'));
+  const income = sum('income') + v('otherIncome');
+  const flow = Math.max(0, income - v('living') - v('save') - debtMonthly);
+  const dsrCap = Math.max(0, income*(nm(b.dsr)||40)/100 - debtMonthly);
   const capMonthly = Math.min(flow, dsrCap);
   const capBy = flow<=dsrCap ? 'flow' : 'dsr';
 
@@ -611,9 +650,8 @@ function budgetPlan(s){
   const jeonseDeposit = (equity + jLoan) / (1 + jc);
   const jeonseMonthly = jLoan*(jRate/100)/12;
 
-  const filled = ['cash','invest','deposit','subscription','support','etcAsset'].some(k=>nm(b[k])>0)
-    || income>0;
-  return {equity, assets, income, flow, dsrCap, capMonthly, capBy,
+  const filled = assets>0 || income>0;
+  return {equity, assets, debt, debtMonthly, income, flow, dsrCap, capMonthly, capBy,
           byCash, byLtv, loanMax, limitedBy, salePrice, saleMonthly,
           jLoan, jeonseDeposit, jeonseMonthly, jRate, rate, years, filled};
 }
@@ -776,8 +814,8 @@ const store = {
     }
     if(this.mode==='db'){ try{ await this.db.doc('properties/'+id).delete(); }catch(e){ toast('서버에서 지우지 못했습니다'); } }
   },
-  async putSettings(){
-    this.saveLocal(); render();
+  async putSettings(quiet){
+    this.saveLocal(); if(!quiet) render();
     if(this.mode==='api'){ this.call('PUT','/api/settings',state.settings).catch(()=>{}); return; }
     if(this.mode==='db'){ try{ await this.db.doc('config/settings').set(state.settings); }catch(e){} }
   },
@@ -1142,7 +1180,17 @@ function renderCompare(){
     '</tr></thead><tbody>'+body+'</tbody></table></div>';
 }
 
-/* ═══ 예산 ══════════════════════════════════ */
+/* 사람 한 명의 입력 칸들 */
+function pfield(email, idx, f){
+  const P=budgetPeople(state.settings.budget);
+  const v=(P[email]||{})[f.k];
+  const id='pf'+idx+'_'+f.k;
+  return '<div class="field"><label for="'+id+'">'+esc(f.l)+'</label>'+
+    '<div class="unit"><input type="number" step="any" id="'+id+'" '+
+    'data-pk="'+f.k+'" data-pemail="'+esc(email)+'" value="'+esc(v==null?'':v)+'"'+
+    (f.ph?' placeholder="'+esc(f.ph)+'"':'')+'><span class="u">'+f.u+'</span></div></div>';
+}
+
 function bfield(k,label,unit,ph,hint){
   const b=state.settings.budget, v=b[k]==null?'':b[k];
   return '<div class="field"><label for="b_'+k+'">'+label+
@@ -1151,28 +1199,78 @@ function bfield(k,label,unit,ph,hint){
     (ph?' placeholder="'+esc(ph)+'"':'')+'><span class="u">'+unit+'</span></div></div>';
 }
 
+/* 사람마다 자기 돈을 적는 판. 혼자면 이름 없이 한 덩어리로 보인다. */
+function peoplePanel(people, plan){
+  const b=state.settings.budget, alone=people.length<2;
+  const won=v=>fmtMan(Math.max(0,Math.round(v)));
+  const P=budgetPeople(b);
+
+  const blocks = people.map((m,i)=>{
+    const mine=P[m.email]||{};
+    const net=personNet(b,mine);
+    const head = alone ? '' :
+      '<div class="pblock-hd"><span class="ava">'+esc((m.name||m.email).slice(0,1))+'</span>'+
+      '<span class="pnm">'+esc(m.name||m.email.split('@')[0])+
+        (m.email===(store.user||{}).email?' <b>(나)</b>':'')+'</span>'+
+      '<span class="pnet" data-net="'+esc(m.email)+'">'+(net?won(net):'—')+'</span></div>';
+    return '<div class="pblock'+(alone?' alone':'')+'">'+head+
+      '<div class="fgrid">'+PERSON_FIELDS.map(f=>pfield(m.email,i,f)).join('')+'</div></div>';
+  }).join('');
+
+  const others = people.filter(m=>!P[m.email] || !Object.keys(P[m.email]).length);
+  const waiting = !alone && others.length && others.length<people.length
+    ? '<p class="byline">'+esc(others.map(m=>m.name||m.email.split('@')[0]).join(', '))+
+      ' 님은 아직 안 적었습니다.</p>' : '';
+
+  return '<div class="panel"><h2>'+(alone?'내 돈':'각자 가진 돈')+'</h2>'+
+    '<p class="desc">'+(alone
+      ? '집에 넣을 수 있는 돈만 적으세요. 단위는 만원입니다. 5,000만원이면 5000, 3억이면 30000입니다.'
+      : '각자 자기 것만 적으면 자동으로 합쳐집니다. 서로 덮어쓰지 않습니다. 단위는 만원이라 3억이면 30000입니다.')+'</p>'+
+    blocks + waiting +
+    (alone?'':'<div class="psum" id="psumLine">합쳐서 <b>'+won(plan.assets-( nm(b.deposit)||0)-(nm(b.support)||0))+
+      '</b>'+(plan.debt?' · 갚을 빚 '+won(plan.debt):'')+'</div>')+
+    '</div>';
+}
+
+/* 입력 칸은 그대로 두고 숫자만 다시 칠한다. 칸 사이를 옮겨다닐 때 입력이 끊기지 않게. */
+function paintBudget(){
+  const plan=budgetPlan(state.settings), b=state.settings.budget;
+  const top=$('#budgetTop'); if(top) top.innerHTML=budgetTopHTML(plan);
+  const P=budgetPeople(b);
+  $$('[data-net]').forEach(el=>{
+    const net=personNet(b, P[el.dataset.net]||{});
+    el.textContent = net?fmtMan(Math.max(0,Math.round(net))):'—';
+  });
+  const sum=$('#psumLine');
+  if(sum) sum.innerHTML='합쳐서 <b>'+fmtMan(Math.max(0,Math.round(
+      plan.assets-(nm(b.deposit)||0)-(nm(b.support)||0))))+'</b>'+
+      (plan.debt?' · 갚을 빚 '+fmtMan(Math.round(plan.debt)):'');
+}
+
 function renderBudget(){
   const s=state.settings, plan=budgetPlan(s), b=s.budget;
   const won=v=>v==null||!isFinite(v)?'—':fmtMan(Math.max(0,Math.round(v)));
   const man=v=>v==null||!isFinite(v)?'—':fmtNum(Math.max(0,Math.round(v)))+'만원';
 
   const people = (state.members.length?state.members:[{email:(store.user||{}).email||'me',name:'나'}]);
-  const incomeRows = people.map(m=>{
-    const v=(b.incomes||{})[m.email];
-    return '<div class="field"><label for="inc_'+esc(m.email)+'">'+esc(m.name||m.email.split('@')[0])+' 월 실수령</label>'+
-      '<div class="unit"><input type="number" step="any" id="inc_'+esc(m.email)+'" data-income="'+esc(m.email)+'" value="'+esc(v==null?'':v)+'" placeholder="세후"><span class="u">만원</span></div></div>';
-  }).join('');
 
+  return '<div id="budgetTop">'+budgetTopHTML(plan)+'</div>'+ budgetFormHTML(people, plan);
+}
+
+/* 위쪽 요약 — 값이 바뀌면 이 부분만 다시 그린다 */
+function budgetTopHTML(plan){
+  const s=state.settings, b=s.budget;
+  const won=v=>v==null||!isFinite(v)?'—':fmtMan(Math.max(0,Math.round(v)));
+  const man=v=>v==null||!isFinite(v)?'—':fmtNum(Math.max(0,Math.round(v)))+'만원';
   const why = plan.limitedBy==='ltv'
       ? '집값 대비 대출 한도('+(nm(b.ltv)||70)+'%)에 먼저 걸립니다'
     : plan.limitedBy==='dsr'
       ? '소득 대비 상환 비율('+(nm(b.dsr)||40)+'%)에 먼저 걸립니다'
       : '매달 남는 돈에 먼저 걸립니다';
-
   const head = plan.filled
     ? '<div class="bigs">'+
         '<div class="big"><div class="k">모을 수 있는 내 돈</div><div class="v">'+won(plan.equity)+'</div>'+
-          '<div class="s">자산 '+won(plan.assets)+' − 기존 빚 '+won(nm(b.debt)||0)+' − 남길 돈 '+won(nm(b.reserve)||0)+'</div></div>'+
+          '<div class="s">자산 '+won(plan.assets)+' − 갚을 빚 '+won(plan.debt)+' − 남길 돈 '+won(nm(b.reserve)||0)+'</div></div>'+
         '<div class="big sale"><div class="k">매매라면</div><div class="v">'+won(plan.salePrice)+' <small>까지</small></div>'+
           '<div class="s">대출 '+won(plan.loanMax)+' · 월 '+man(plan.saleMonthly)+'</div></div>'+
         '<div class="big jeonse"><div class="k">전세라면</div><div class="v">'+won(plan.jeonseDeposit)+' <small>까지</small></div>'+
@@ -1196,31 +1294,27 @@ function renderBudget(){
       '<h3>얼마짜리 집이 맞을까</h3>'+
       '<p>가진 돈과 버는 돈을 넣으면 매매와 전세로 얼마까지 볼 수 있는지 계산합니다.<br>표에 있는 집들이 예산에 맞는지도 같이 표시됩니다.</p></div>';
 
-  return head+
-    '<div class="panel"><h2>가진 돈</h2>'+
-      '<p class="desc">집에 넣을 수 있는 돈만 적으세요. 단위는 만원입니다. 5,000만원이면 5000, 3억이면 30000입니다.</p>'+
+  return head;
+}
+
+function budgetFormHTML(people, plan){
+  const s=state.settings, b=s.budget;
+  return ''+
+    peoplePanel(people, plan)+
+    '<div class="panel"><h2>함께 걸린 돈</h2>'+
+      '<p class="desc">누구 하나의 것이 아니라 집을 구하는 데 같이 쓰이는 돈입니다.</p>'+
       '<div class="fgrid">'+
-        bfield('cash','현금 · 예적금','만원')+
-        bfield('invest','주식 · 펀드 등','만원','평가액')+
-        bfield('investUse','그중 집에 쓸 비율','%','80')+
         bfield('deposit','지금 집 보증금','만원','돌려받을 돈')+
-        bfield('subscription','청약통장','만원')+
         bfield('support','지원받을 돈','만원','부모님 등')+
-        bfield('etcAsset','그 밖에','만원')+
         bfield('reserve','남겨둘 돈','만원','이사·가구')+
+        bfield('investUse','주식을 집에 쓸 비율','%','80')+
       '</div></div>'+
-    '<div class="panel"><h2>버는 돈과 쓰는 돈</h2>'+
-      '<p class="desc">월 단위로 적으세요. 실수령액 기준입니다.</p>'+
-      '<div class="fgrid">'+incomeRows+
-        bfield('otherIncome','그 밖의 월 소득','만원')+
+    '<div class="panel"><h2>매달 나가는 돈</h2>'+
+      '<p class="desc">월 단위로 적으세요. 집값을 뺀 생활비와, 집을 사더라도 매달 남기고 싶은 저축입니다.</p>'+
+      '<div class="fgrid">'+
         bfield('living','월 생활비','만원','집값 빼고')+
         bfield('save','매달 남기고 싶은 돈','만원')+
-      '</div></div>'+
-    '<div class="panel"><h2>갚고 있는 빚</h2>'+
-      '<p class="desc">지금 갚는 중인 대출이 있으면 적으세요. 모을 수 있는 돈과 매달 낼 수 있는 돈에서 빠집니다.</p>'+
-      '<div class="fgrid">'+
-        bfield('debt','남은 원금','만원')+
-        bfield('debtMonthly','월 상환액','만원')+
+        bfield('otherIncome','그 밖의 월 소득','만원','임대수입 등')+
       '</div></div>'+
     '<div class="panel"><h2>계산 기준</h2>'+
       '<p class="desc">은행과 시장 상황에 따라 달라집니다. 아는 값이 있으면 바꿔 넣으세요. 대출 금리는 설정 화면에서 바꿉니다. 지금은 연 '+s.loanRate+'%입니다.</p>'+
@@ -1608,7 +1702,18 @@ document.addEventListener('change', e=>{
   if(t.dataset && t.dataset.bk){
     const raw=t.value.trim();
     state.settings.budget[t.dataset.bk] = raw===''?null:Number(raw);
-    store.putSettings(); return;
+    store.putSettings(true); paintBudget(); return;
+  }
+  if(t.dataset && t.dataset.pk){
+    const b=state.settings.budget;
+    if(!b.people) b.people = JSON.parse(JSON.stringify(budgetPeople(b)));   // 예전 모양을 먼저 옮긴다
+    const em=t.dataset.pemail;
+    if(!b.people[em]) b.people[em]={};
+    const raw=t.value.trim();
+    if(raw==='') delete b.people[em][t.dataset.pk];
+    else b.people[em][t.dataset.pk]=Number(raw);
+    ['cash','invest','subscription','etcAsset','debt','debtMonthly','incomes'].forEach(k=>delete b[k]);
+    store.putSettings(true); paintBudget(); return;
   }
   if(t.dataset && t.dataset.income){
     const raw=t.value.trim();

@@ -1,0 +1,17 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "illust-scratch",
+      "runtimeExecutable": "python3",
+      "runtimeArgs": ["-m", "http.server", "8781", "--directory", "/private/tmp/claude-501/-Users-myoung-IdeaProjects-house-hunt/b3dfe6b4-0699-4ce5-b374-1577bf285f62/scratchpad"],
+      "port": 8781
+    },
+    {
+      "name": "static",
+      "runtimeExecutable": "python3",
+      "runtimeArgs": ["-m", "http.server", "8782"],
+      "port": 8782
+    }
+  ]
+}
