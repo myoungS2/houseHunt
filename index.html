@@ -1672,16 +1672,18 @@ function renderAdmin(){
         '<th>가입</th><th>마지막 로그인</th><th>상태</th><th>할 일</th>'+
       '</tr></thead><tbody>'+users+'</tbody></table></div></div>'+
     '<div class="panel"><h2>백업</h2>'+
-      '<p class="desc">이 서비스의 데이터는 Cloudflare D1 한 곳에 있습니다. 사진도 거기 같이 들어 있습니다. 아래 세 가지를 함께 쓰시면 됩니다.</p>'+
+      '<p class="desc">데이터는 Cloudflare D1 한 곳에 있고 사진도 거기 같이 들어 있습니다. 세 겹으로 받쳐둡니다.</p>'+
       '<div class="steps">'+
         '<div class="step"><span class="n">1</span><div><b>되돌리기 — 지난 30일 아무 시점으로</b>'+
-          '<p>D1이 스스로 모든 변경을 기록해 둡니다. 실수로 지웠을 때 그 직전으로 되돌릴 수 있습니다. 따로 켤 것도, 돈 들 것도 없습니다.</p>'+
+          '<p>D1이 스스로 모든 변경을 기록해 둡니다. 실수로 지웠을 때 그 직전으로 되돌립니다. 따로 켤 것도 돈 들 것도 없습니다. 다만 Cloudflare 계정 안에만 있습니다.</p>'+
           '<pre class="cmd">npx wrangler d1 time-travel restore house-hunt --timestamp=2026-09-14T09:00:00Z</pre></div></div>'+
-        '<div class="step"><span class="n">2</span><div><b>통째로 내려받기 — 복구까지 되는 완전한 사본</b>'+
-          '<p>비밀번호와 사진까지 전부 들어 있는 SQL 파일입니다. 큰일을 앞두고 한 번씩 떠두세요.</p>'+
-          '<pre class="cmd">npx wrangler d1 export house-hunt --remote --output=backup.sql</pre></div></div>'+
-        '<div class="step"><span class="n">3</span><div><b>지금 바로 — 매물과 장부만</b>'+
-          '<p>사람이 읽을 수 있는 JSON입니다. 비밀번호와 사진 본체는 빼고 받습니다.</p>'+
+        '<div class="step"><span class="n">2</span><div><b>매일 사본 — 계정 밖에 90일치</b>'+
+          '<p>GitHub Actions가 매일 새벽 4시에 통째로 내보내 암호로 잠근 뒤 보관합니다. Cloudflare 계정에 무슨 일이 생겨도 남습니다. 저장소 Settings의 Secrets에 값 세 개를 넣어야 돕니다.</p>'+
+          '<pre class="cmd">CLOUDFLARE_API_TOKEN · CLOUDFLARE_ACCOUNT_ID · BACKUP_PASSPHRASE</pre></div></div>'+
+        '<div class="step"><span class="n">3</span><div><b>지금 손으로</b>'+
+          '<p>이 컴퓨터에 바로 받아둘 수 있습니다. 스키마를 바꾸기 전처럼 큰일을 앞두고 한 번 떠두세요.</p>'+
+          '<pre class="cmd">./tools/backup.sh</pre>'+
+          '<p style="margin-top:8px">매물과 장부만 사람이 읽을 수 있는 모양으로 받으려면 아래 단추를 누르세요. 비밀번호 해시와 사진 본체는 빠집니다.</p>'+
           '<button class="btn primary sm" id="dumpJson" style="margin-top:6px">데이터 내려받기</button></div></div>'+
       '</div></div>'+
     '<div class="panel"><h2>장부</h2>'+

@@ -240,24 +240,59 @@ npx wrangler secret put ADMIN_EMAIL
 
 ## 백업
 
-데이터는 Cloudflare D1 한 곳에 있습니다. 사진도 거기 같이 들어 있습니다. 세 가지를 함께 씁니다.
+데이터는 Cloudflare D1 한 곳에 있습니다. 사진도 거기 같이 들어 있습니다. 세 겹으로 받쳐둡니다.
 
-**1. 되돌리기 (자동, 30일)** D1 이 모든 변경을 스스로 기록합니다. 따로 켤 것도 돈 들 것도 없습니다.
+### 1. 되돌리기 — 자동, 30일, Cloudflare 안
+
+D1이 스스로 모든 변경을 기록합니다. 켤 것도 돈 들 것도 없습니다. 실수로 지웠을 때 그 직전으로 되돌립니다.
 
 ```bash
 npx wrangler d1 time-travel info house-hunt
 npx wrangler d1 time-travel restore house-hunt --timestamp=2026-09-14T09:00:00Z
 ```
 
-**2. 통째로 내려받기** 비밀번호와 사진까지 전부 들어 있는 완전한 사본입니다. 이전 스크립트를 돌리기 전처럼 큰일을 앞두고 떠두세요.
+### 2. 매일 사본 — 자동, 90일, 계정 밖
+
+`.github/workflows/backup.yml` 이 매일 새벽 4시(한국 시간)에 통째로 내보내고, 크기와 테이블이 멀쩡한지 검사한 뒤, AES-256으로 잠가 Actions 아티팩트로 보관합니다. Cloudflare 계정에 무슨 일이 생겨도 남습니다.
+
+**한 번만 설정하면 됩니다.** 저장소 Settings → Secrets and variables → Actions 에 세 개를 넣으세요.
+
+| 이름 | 어디서 |
+|---|---|
+| `CLOUDFLARE_API_TOKEN` | Cloudflare 대시보드 → My Profile → API Tokens. D1 읽기 권한이면 충분합니다 |
+| `CLOUDFLARE_ACCOUNT_ID` | `npx wrangler whoami` 가 알려줍니다 |
+| `BACKUP_PASSPHRASE` | 아무 긴 문자열. **잃어버리면 백업을 열 수 없습니다** |
+
+암호로 잠그기 때문에 저장소가 공개여도 내용이 새지 않습니다. 손으로 돌리려면 Actions 탭에서 Run workflow 를 누르세요.
+
+### 3. 지금 손으로
 
 ```bash
-npx wrangler d1 export house-hunt --remote --output=backup.sql
+./tools/backup.sh                    # ~/Backups/house-hunt 에 저장
+./tools/backup.sh ~/Dropbox/backup   # 원하는 곳에
 ```
 
-**3. 관리 화면의 내려받기** 사람이 읽을 수 있는 JSON 입니다. 비밀번호 해시와 사진 본체는 빼고 받습니다. 매물 기록만 따로 챙기고 싶을 때 씁니다.
+내보내서 크기와 테이블을 검사하고 gzip으로 눌러 보관합니다. 최근 30개만 남기고 오래된 것은 지웁니다.
 
-되돌리기가 30일치를 덮으니 평소에는 그것으로 충분하고, 스키마를 바꾸기 전에는 2번을 한 번 떠두는 것을 권합니다.
+관리 화면의 **데이터 내려받기** 단추를 누르면 매물과 장부만 JSON으로 받습니다. 비밀번호 해시와 사진 본체는 빠집니다.
+
+### 되돌려 넣기
+
+잠긴 파일을 먼저 풉니다.
+
+```bash
+openssl enc -d -aes-256-cbc -pbkdf2 -iter 300000 -in house-hunt-20260914.sql.enc -out dump.sql
+```
+
+덤프의 `CREATE TABLE` 문에는 대부분 `IF NOT EXISTS` 가 없어서 **빈 데이터베이스에 부어야** 합니다. 지금 데이터베이스를 되돌리는 것이라면 1번 되돌리기가 더 안전합니다.
+
+```bash
+npx wrangler d1 execute house-hunt --remote --file=dump.sql
+```
+
+실제로 빈 데이터베이스에 부어 회원·장부·매물이 그대로 살아나는 것을 확인했습니다.
+
+---
 
 ---
 
@@ -284,5 +319,7 @@ npx wrangler dev --local
 | `tools/reset-password.mjs` | 비밀번호 초기화 SQL 생성 |
 | `migrations/001-shared-books.sql` | 사람별 데이터를 장부 단위로 옮기는 한 번짜리 스크립트 |
 | `migrations/002-photos-in-db.sql` | R2 없이 사진을 담을 자리를 만드는 스크립트 |
+| `tools/backup.sh` | 이 컴퓨터로 백업 받기 |
+| `.github/workflows/backup.yml` | 매일 자동 백업 |
 
 `tools/reset-password.mjs`의 반복 횟수는 `src/worker.js`의 `CLIENT_ITER`, `SERVER_ITER`와 같아야 합니다. 한쪽만 바꾸면 기존 비밀번호가 전부 안 맞게 됩니다.

@@ -1,0 +1,64 @@
+name: DB 백업
+
+# 매일 새벽 4시(한국 시간)에 D1을 통째로 내보내 암호로 잠근 뒤 올려둡니다.
+# 손으로 돌리고 싶으면 Actions 탭에서 Run workflow 를 누르세요.
+on:
+  schedule:
+    - cron: '0 19 * * *'   # UTC 19:00 = KST 04:00
+  workflow_dispatch:
+
+jobs:
+  backup:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: 내보내기
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: |
+          npx --yes wrangler@4 d1 export house-hunt --remote --output=dump.sql
+
+      - name: 제대로 나왔는지 확인
+        run: |
+          SIZE=$(wc -c < dump.sql)
+          echo "덤프 크기: ${SIZE} 바이트"
+          if [ "$SIZE" -lt 2000 ]; then
+            echo "::error::덤프가 너무 작습니다. 내보내기가 실패했을 수 있습니다."
+            exit 1
+          fi
+          for T in users books book_members properties settings photos; do
+            grep -q "CREATE TABLE .*\"\?${T}\"\?" dump.sql \
+              || { echo "::error::${T} 테이블이 덤프에 없습니다"; exit 1; }
+          done
+          {
+            echo "### 백업 완료"
+            echo ""
+            echo "| 항목 | 값 |"
+            echo "| --- | --- |"
+            echo "| 크기 | $(( SIZE / 1024 )) KB |"
+            echo "| 회원 | $(grep -c 'INSERT INTO "users"' dump.sql) |"
+            echo "| 장부 | $(grep -c 'INSERT INTO "books"' dump.sql) |"
+            echo "| 매물 | $(grep -c 'INSERT INTO "properties"' dump.sql) |"
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: 암호로 잠그기
+        env:
+          PASS: ${{ secrets.BACKUP_PASSPHRASE }}
+        run: |
+          test -n "$PASS" || { echo "::error::BACKUP_PASSPHRASE 가 없습니다"; exit 1; }
+          openssl enc -aes-256-cbc -pbkdf2 -iter 300000 -salt \
+            -in dump.sql -out "house-hunt-$(date -u +%Y%m%d).sql.enc" -pass env:PASS
+          rm -f dump.sql
+
+      - name: 올려두기
+        uses: actions/upload-artifact@v4
+        with:
+          name: db-backup-${{ github.run_number }}
+          path: '*.sql.enc'
+          retention-days: 90
