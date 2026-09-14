@@ -266,7 +266,8 @@ async function handleAuth(req, env, url) {
   }
 
   if (path === '/auth/signup' && req.method === 'GET') {
-    return authPage('signup', null, safeNext(url.searchParams.get('next')));
+    const nx = safeNext(url.searchParams.get('next'));
+    return authPage('signup', null, nx, await inviteOk(env, nx), url.searchParams.get('code') || '');
   }
 
   if (path === '/auth/password' && req.method === 'GET') {
@@ -315,11 +316,14 @@ async function handleAuth(req, env, url) {
     const blocked = await rateBlocked(env, ipKey);
     if (blocked) return json({ error: '가입 시도가 너무 많습니다. ' + minutesLeft(blocked) + '분 뒤에 다시 해주세요' }, 429);
 
-    const code = env.SIGNUP_CODE || '';
-    if (!code) return json({ error: '가입이 닫혀 있습니다. 장부 주인에게 문의하세요' }, 403);
-    if (!eqStr(String(body.code || '').trim(), code)) {
-      await rateFail(env, ipKey, SIGNUP_WINDOW_MS, SIGNUP_MAX, SIGNUP_WINDOW_MS);
-      return json({ error: '가입 코드가 맞지 않습니다' }, 403);
+    const invitedTo = await inviteOk(env, safeNext(body.next));
+    if (!invitedTo) {
+      const code = env.SIGNUP_CODE || '';
+      if (!code) return json({ error: '가입이 닫혀 있습니다. 초대 링크를 받아 들어오세요' }, 403);
+      if (!eqStr(String(body.code || '').trim(), code)) {
+        await rateFail(env, ipKey, SIGNUP_WINDOW_MS, SIGNUP_MAX, SIGNUP_WINDOW_MS);
+        return json({ error: '가입 코드가 맞지 않습니다' }, 403);
+      }
     }
     if (!validEmail(email)) return json({ error: '이메일 형식이 올바르지 않습니다' }, 400);
     if (!validKey(body.key)) return json({ error: '비밀번호를 다시 입력해 주세요' }, 400);
@@ -382,7 +386,7 @@ function safeNext(next) {
   return next;
 }
 
-function authPage(kind, email, next) {
+function authPage(kind, email, next, invitedTo, codeHint) {
   const nonce = b64(crypto.getRandomValues(new Uint8Array(16)));
   const T = {
     login:    { title: '하우스헌팅', lead: '로그인', btn: '로그인', path: '/auth/login' },
@@ -392,11 +396,12 @@ function authPage(kind, email, next) {
 
   const fields =
     kind === 'signup' ? [
+      invitedTo ? '<p class="who">' + esc(invitedTo) + '에 초대받았습니다</p>' : '',
       row('email', '이메일', 'email', 'username', '', true),
       row('name', '이름 (안 써도 됩니다)', 'text', 'name'),
       row('pw', '비밀번호', 'password', 'new-password', MIN_PW + '자 이상'),
       row('pw2', '비밀번호 다시', 'password', 'new-password'),
-      row('code', '가입 코드', 'text', 'off', '장부 주인에게 받은 코드')
+      invitedTo ? '' : row('code', '가입 코드', 'text', 'off', '받은 코드', false, codeHint)
     ].join('') :
     kind === 'password' ? [
       '<p class="who">' + esc(email) + '</p>',
@@ -440,10 +445,11 @@ function authPage(kind, email, next) {
     })
   });
 }
-function row(id, label, type, ac, ph, autofocus) {
+function row(id, label, type, ac, ph, autofocus, value) {
   return '<label for="' + id + '">' + label + '</label>' +
     '<input id="' + id + '" type="' + type + '" autocomplete="' + ac + '"' +
-    (ph ? ' placeholder="' + esc(ph) + '"' : '') + (autofocus ? ' autofocus' : '') + '>';
+    (ph ? ' placeholder="' + esc(ph) + '"' : '') +
+    (value ? ' value="' + esc(value) + '"' : '') + (autofocus ? ' autofocus' : '') + '>';
 }
 
 const SCENE_SVG = '<div class="pic" aria-hidden="true"><svg viewBox="0 0 240 152" fill="none" stroke="var(--ink)" stroke-width="2.6" stroke-linejoin="round" stroke-linecap="round"><path d="M184 40a9 9 0 0 1 0-18 12 12 0 0 1 22-4 12 12 0 0 1 6 22z" fill="var(--surface)"/><g class="mg"><path d="M67.5 47.5 78.5 58.5" stroke-width="5.5"/><circle cx="55" cy="35" r="14.5" fill="var(--surface)"/></g><rect x="5" y="126" width="230" height="17" rx="8.5" fill="var(--mint)"/><path d="M15.5 126v-16"/><circle cx="15.5" cy="103" r="11" fill="var(--leaf)"/><rect x="30" y="96" width="42" height="30" fill="var(--surface)"/><path d="M24 96 51 73l27 23" fill="var(--leaf)"/><rect x="34.5" y="101" width="9.5" height="9.5" rx="1.5" fill="var(--mint)"/><rect x="52" y="110" width="13" height="16" rx="2" fill="var(--sun)"/><path d="M140 74V57h9.5v11" fill="var(--surface)"/><rect x="92" y="82" width="62" height="44" fill="var(--surface)"/><path d="M85 82 123 51l38 31" fill="var(--sun)"/><rect x="98.5" y="90" width="15" height="15" rx="2" fill="var(--mint)"/><path d="M106 90v15M98.5 97.5h15" stroke-width="2"/><rect x="132.5" y="90" width="15" height="15" rx="2" fill="var(--mint)"/><path d="M140 90v15M132.5 97.5h15" stroke-width="2"/><rect x="113" y="104" width="20" height="22" rx="2.5" fill="var(--surface)"/><circle cx="128" cy="116" r="1.9" fill="var(--ink)" stroke="none"/><rect x="174" y="100" width="40" height="26" fill="var(--surface)"/><path d="M168 100 194 79l26 21" fill="var(--mint)"/><rect x="184" y="106" width="11" height="11" rx="1.5" fill="var(--leaf)"/><path d="M226 126v-14"/><circle cx="226" cy="105" r="9.5" fill="var(--leaf)"/></svg></div>';
@@ -520,7 +526,7 @@ function authScript(kind, postPath, next) {
 ' }',
 ' if(KIND==="signup"){',
 '  if(val("pw")!==val("pw2")) return fail("두 비밀번호가 서로 다릅니다.");',
-'  if(!val("code").trim()) return fail("가입 코드를 넣어 주세요.");',
+'  if(document.getElementById("code") && !val("code").trim()) return fail("가입 코드를 넣어 주세요.");',
 '  if(val("pw").toLowerCase().indexOf(email.split("@")[0].toLowerCase())>=0) return fail("비밀번호에 이메일을 그대로 쓰지 마세요.");',
 ' }',
 ' if(KIND==="password"){',
@@ -550,6 +556,19 @@ function authScript(kind, postPath, next) {
 }
 
 /* ═══ 초대 링크로 합류 ══════════════════════ */
+/* next 가 살아 있는 초대 링크면 그 장부 이름을 돌려준다.
+ * 초대를 받아 들어오는 사람에게는 가입 코드를 따로 묻지 않는다. */
+async function inviteOk(env, next) {
+  const m = String(next || '').match(/^\/join\/([A-Za-z0-9_-]{20,64})$/);
+  if (!m) return null;
+  const inv = await env.DB.prepare(
+    'SELECT i.expires_at, i.used_at, b.name FROM book_invites i ' +
+    'JOIN books b ON b.id = i.book_id WHERE i.token = ?'
+  ).bind(m[1]).first();
+  if (!inv || inv.used_at || Number(inv.expires_at) < Date.now()) return null;
+  return inv.name;
+}
+
 async function handleJoin(req, env, url) {
   const token = url.pathname.slice('/join/'.length);
   if (!/^[A-Za-z0-9_-]{20,64}$/.test(token)) return joinPage('없는 초대 링크입니다.', null);
