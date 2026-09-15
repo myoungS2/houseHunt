@@ -1,0 +1,17 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "house-hunt-static",
+      "runtimeExecutable": "python3",
+      "runtimeArgs": ["-m", "http.server", "8788"],
+      "port": 8788
+    },
+    {
+      "name": "house-hunt-worker",
+      "runtimeExecutable": "npx",
+      "runtimeArgs": ["wrangler", "dev", "--local", "--port", "8789"],
+      "port": 8789
+    }
+  ]
+}
