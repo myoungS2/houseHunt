@@ -1836,7 +1836,12 @@ function sharePanel(){
     '<div class="field" style="max-width:280px;margin-bottom:16px"><label for="bookName">장부 이름</label>'+
       '<input type="text" id="bookName" value="'+esc(state.book.name)+'"'+(store.mode==='api'?'':' disabled')+'></div>'+
     list+
-    '<div id="inviteBox" style="margin-top:16px">'+ inviteUI(owner) +'</div></div>';
+    '<div id="inviteBox" style="margin-top:16px">'+ inviteUI(owner) +'</div>'+
+    '<div style="margin-top:20px;padding-top:15px;border-top:1.5px solid var(--line)">'+
+      '<p class="desc" style="margin:0 0 9px">따로 볼 장부가 필요하면 새로 만들 수 있습니다. '+
+        '새 장부는 나만 보이고, 위쪽에서 오가며 씁니다. 이름은 만든 뒤 여기서 바꾸세요.</p>'+
+      '<button class="btn sm" id="newBook">새 장부 만들기</button>'+
+    '</div></div>';
 }
 
 /* 초대 링크는 부를 사람 수만큼 따로 만들어 둡니다. 먼저 보낸 링크는 죽지 않습니다. */
@@ -2473,6 +2478,14 @@ document.addEventListener('click', e=>{
         .then(j=>{ state.invites=j.invites||[]; toast('초대 링크를 모두 껐습니다'); render(); })
         .catch(e=>toast(e.message));
       break;
+    case 'newBook': {
+      if(!arm(t,'새 장부를 만들까요?','새 장부 만들기')) break;
+      t.disabled=true; t.textContent='만드는 중…';
+      store.call('POST','/api/book/new',{name:'새 장부'})
+        .then(()=>location.reload())
+        .catch(e=>{ toast(e.message); t.disabled=false; t.textContent='새 장부 만들기'; });
+      break;
+    }
     case 'leaveBook': {
       if(!arm(t,'정말 나갈까요?','이 장부에서 나가기')) break;
       store.call('POST','/api/book/leave',{}).then(()=>location.reload()).catch(e=>toast(e.message));

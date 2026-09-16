@@ -23,6 +23,7 @@ const MAX_PHOTO_DB = 700 * 1024;   // R2 없이 D1에 담을 때 한 장 크기
 const MAX_PHOTOS_DB = 300;        // R2 없이 D1에 담을 때 장부당 장수
 const MAX_MEMBERS  = 6;        // 한 장부에 들어올 수 있는 사람 수
 const INVITE_DAYS  = 7;        // 초대 링크가 살아 있는 기간
+const MAX_BOOKS    = 5;        // 한 사람이 주인으로 가질 수 있는 장부 수
 const MAX_PROPS    = 300;      // 한 장부에 담을 수 있는 매물 수
 const MAX_PROP_LEN = 200000;   // 매물 한 곳의 JSON 길이
 
@@ -137,7 +138,9 @@ async function currentUser(req, env) {
   /* 로컬 테스트용. 장부까지 붙여 줘야 API 가 돕니다. */
   if (env.ALLOW_OPEN === '1') {
     const u = { email: 'open@local', name: '공용', key: 'open@local' };
-    u.book = await resolveBook(env, u, null);
+    const row = await env.DB.prepare(
+      'SELECT current_book FROM users WHERE email = ?').bind(u.key).first();
+    u.book = await resolveBook(env, u, row && row.current_book);
     return u;
   }
 
@@ -1305,6 +1308,19 @@ async function handleApi(req, env, url, u) {
     if (!name) return json({ error: '장부 이름을 적어 주세요' }, 400);
     await env.DB.prepare('UPDATE books SET name = ? WHERE id = ?').bind(name, bk).run();
     return json({ ok: true, name });
+  }
+
+  /* 따로 볼 장부를 새로 만듭니다. 만든 사람이 주인이 되고, 바로 그 장부로 옮겨 갑니다.
+     초대를 받아 남의 장부에 들어온 분도 이걸로 자기 장부를 가질 수 있습니다. */
+  if (path === '/api/book/new' && method === 'POST') {
+    const name = String((await req.json()).name || '').trim().slice(0, 40) || '새 장부';
+    const mine = await env.DB.prepare(
+      'SELECT COUNT(*) AS n FROM books WHERE owner_key = ?').bind(uk).first();
+    if (Number(mine.n) >= MAX_BOOKS) {
+      return json({ error: '장부는 ' + MAX_BOOKS + '개까지 만들 수 있습니다' }, 409);
+    }
+    const book = await createBook(env, uk, name);
+    return json({ ok: true, book });
   }
 
   if (path === '/api/book/switch' && method === 'POST') {
