@@ -265,6 +265,9 @@ legend{font-size:11px;letter-spacing:.08em;color:var(--muted);font-weight:700;pa
 .nvOut{font-size:11.5px;color:var(--ink-2);line-height:1.55;flex:1;min-width:140px}
 .nvOut b{color:var(--accent);font-weight:600}
 .nvOut i{color:var(--muted);font-style:normal}
+.urlRow{display:flex;gap:8px;align-items:stretch}
+.urlRow input{flex:1;min-width:0}
+.urlRow button{flex:none;white-space:nowrap}
 .unit{position:relative}
 .unit .u{position:absolute;right:12px;top:50%;transform:translateY(-50%);font-size:11.5px;color:var(--muted);pointer-events:none}
 .unit input{padding-right:46px}
@@ -2229,6 +2232,8 @@ function field(f,d){
     const step = f.t==='num'?' step="any"':'';
     const inp='<input type="'+type+'" id="'+id+'" name="'+f.k+'" value="'+esc(v)+'" placeholder="'+esc(f.ph||'')+'"'+step+'>';
     ctrl = f.u ? '<div class="unit">'+inp+'<span class="u">'+f.u+'</span></div>' : inp;
+    /* 링크를 넣어 두면 바로 띄워 볼 수 있게 단추를 곁들입니다. */
+    if(f.t==='url') ctrl='<div class="urlRow">'+inp+'<button type="button" class="btn sm" id="openUrl">열기</button></div>';
   }
   return '<div'+cls+'><label for="'+id+'">'+f.l+'</label>'+ctrl+'</div>';
 }
@@ -2478,6 +2483,14 @@ document.addEventListener('click', e=>{
         .then(j=>{ state.invites=j.invites||[]; toast('초대 링크를 모두 껐습니다'); render(); })
         .catch(e=>toast(e.message));
       break;
+    case 'openUrl': {
+      const el=$('#f_url'), raw=((el&&el.value)||'').trim();
+      if(!raw){ toast('매물 링크를 먼저 넣어 주세요'); break; }
+      /* http 나 https 로 시작하지 않으면 붙여 줍니다. 이상한 스킴은 이 과정에서 무해해집니다. */
+      const u = /^https?:\/\//i.test(raw) ? raw : ('https://'+raw.replace(/^\/+/,''));
+      window.open(u,'hhListing','noopener,noreferrer,width=520,height=900');
+      break;
+    }
     case 'newBook': {
       if(!arm(t,'새 장부를 만들까요?','새 장부 만들기')) break;
       t.disabled=true; t.textContent='만드는 중…';
