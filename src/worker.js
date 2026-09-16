@@ -764,7 +764,6 @@ function agePage(next) {
     '<style nonce="' + nonce + '">' + AUTH_CSS + '</style></head><body>' +
     '<main class="card">' + SCENE_SVG +
       '<h1>하우스헌팅</h1><p class="lead">시작하기 전에</p>' +
-      '<p class="who">연령대 하나만 골라 주세요. 또래가 어떤 집을 보고 있는지 견주는 데만 씁니다.</p>' +
       '<form id="f" novalidate>' + ageRow() +
         '<p class="err" id="err" hidden></p>' +
         '<button type="submit" id="go">시작하기</button>' +
