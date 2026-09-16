@@ -50,6 +50,10 @@ export default {
     const url = new URL(req.url);
     const path = url.pathname;
     try {
+      /* 약관과 방침은 로그인 없이 누구나 볼 수 있어야 합니다.
+         구글도 앱을 게시하기 전에 이 주소들을 확인합니다. */
+      if (path === '/privacy' || path === '/terms') return legalPage(path.slice(1), env);
+
       if (path.startsWith('/auth/')) return await handleAuth(req, env, url);
 
       if (path === '/api/me') {
@@ -671,6 +675,7 @@ function authPage(kind, email, next, invitedTo, codeHint, google, notice) {
         '<p class="err" id="err"' + (notice ? '>' + esc(notice) : ' hidden>') + '</p>' +
         '<button type="submit" id="go">' + T.btn + '</button>' +
       '</form>' + foot +
+      '<p class="fine"><a href="/privacy">개인정보처리방침</a> · <a href="/terms">서비스 약관</a></p>' +
     '</main>' +
     '<script nonce="' + nonce + '">' + authScript(kind, T.path, next) + '</script></body></html>';
 
@@ -732,6 +737,217 @@ function agePage(next) {
     })
   });
 }
+
+/* ═══ 약관과 개인정보처리방침 ══════════════
+ * 실제로 무엇을 받아 어디에 두는지 코드와 맞춰 적습니다.
+ * 저장하는 값이나 보관 기간을 바꾸면 이 글도 같이 고쳐야 합니다.
+ */
+const LEGAL_FROM = '2026년 9월 16일';
+const LEGAL_MAIL = 'mythe1004@gmail.com';
+
+function legalPage(kind, env) {
+  const nonce = b64(crypto.getRandomValues(new Uint8Array(16)));
+  const doc = kind === 'privacy' ? privacyDoc(env) : termsDoc();
+  const other = kind === 'privacy'
+    ? '<a href="/terms">서비스 약관</a>'
+    : '<a href="/privacy">개인정보처리방침</a>';
+
+  const html = '<!doctype html><html lang="ko"><head><meta charset="utf-8">' +
+    '<meta name="viewport" content="width=device-width,initial-scale=1">' +
+    '<meta name="color-scheme" content="light dark"><title>' + doc.title + ' · 하우스헌팅</title>' +
+    '<link rel="preconnect" href="https://fonts.googleapis.com">' +
+    '<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>' +
+    '<link href="https://fonts.googleapis.com/css2?family=Jua&family=IBM+Plex+Sans+KR:wght@400;500;600&display=swap" rel="stylesheet">' +
+    '<style nonce="' + nonce + '">' + AUTH_CSS + LEGAL_CSS + '</style></head><body>' +
+    '<main class="doc">' +
+      '<p class="crumb"><a href="/">하우스헌팅</a></p>' +
+      '<h1>' + doc.title + '</h1>' +
+      '<p class="when">시행일 ' + LEGAL_FROM + '</p>' +
+      doc.body +
+      '<hr><p class="alt">' + other + ' · <a href="/auth/login">로그인</a></p>' +
+    '</main></body></html>';
+
+  return new Response(html, {
+    headers: Object.assign(baseHeaders(), {
+      'content-type': 'text/html; charset=utf-8',
+      'cache-control': 'public, max-age=3600',
+      'content-security-policy': csp(nonce)
+    })
+  });
+}
+
+function privacyDoc(env) {
+  const photoWhere = env && env.PHOTOS
+    ? 'Cloudflare R2 저장소'
+    : '데이터베이스 안(Cloudflare D1)';
+  return {
+    title: '개인정보처리방침',
+    body: [
+      '<p class="lede">하우스헌팅은 집을 고르는 동안 후보를 모아 견주어 보는 장부입니다. ' +
+        '아래는 이 서비스가 무엇을 받아 어디에 두는지 그대로 적은 것입니다.</p>',
+
+      '<h2>무엇을 받나</h2>',
+      '<h3>계정을 만들 때</h3>',
+      '<ul>' +
+        '<li><b>이메일 주소</b> — 계정을 가려내는 값입니다. 꼭 필요합니다.</li>' +
+        '<li><b>이름</b> — 안 쓰셔도 됩니다. 비우면 이메일 앞부분을 씁니다.</li>' +
+        '<li><b>비밀번호</b> — 원문은 서버에 도착하지 않습니다. 브라우저가 PBKDF2로 60만 번 늘린 ' +
+          '결과만 보내고, 서버는 거기에 임의의 소금을 섞어 1만 2천 번 더 늘려 저장합니다.</li>' +
+        '<li><b>연령대</b> — 안 밝히셔도 됩니다. 또래끼리 어떤 조건의 집을 보는지 견주는 통계에만 씁니다.</li>' +
+        '<li><b>구글로 시작하신 경우</b> — 구글이 주는 계정 고유 번호(sub)와 이메일, 이름을 받습니다. ' +
+          '구글 비밀번호는 받지 않습니다.</li>' +
+      '</ul>',
+      '<h3>쓰시는 동안 쌓이는 것</h3>',
+      '<ul>' +
+        '<li>가입한 날과 마지막으로 로그인한 날</li>' +
+        '<li><b>장부에 적으신 매물 내용 전부</b> — 이름, 주소, 금액, 면적, 좋은 점과 아쉬운 점, 메모, ' +
+          '중개사무소 이름과 전화번호처럼 직접 넣으신 값이 그대로 들어갑니다.</li>' +
+        '<li>올리신 매물 사진</li>' +
+        '<li>금리나 별점 항목 같은 장부 설정</li>' +
+        '<li>로그인이 거듭 실패할 때 잠시 두는 접속 아이피와 실패 횟수</li>' +
+      '</ul>',
+
+      '<h2>왜 받나</h2>',
+      '<ul>' +
+        '<li>장부를 보여주고, 같은 장부에 든 사람끼리 같은 내용을 보게 하려고</li>' +
+        '<li>로그인을 유지하고, 남이 비밀번호를 찍어 맞히는 것을 막으려고</li>' +
+        '<li>연령대별로 어떤 금액과 넓이의 집을 보고 있는지 모아 보려고. ' +
+          '이 통계는 <b>합계와 평균으로만</b> 만들고, 누가 어떤 집을 봤는지 따로 드러내지 않습니다.</li>' +
+      '</ul>',
+
+      '<h2>어디에 두나</h2>',
+      '<p>Cloudflare 의 데이터베이스(D1)에 둡니다. 사진은 ' + photoWhere + '에 있습니다. ' +
+        '서비스도 Cloudflare 위에서 돕니다. 광고나 분석 도구는 하나도 붙어 있지 않습니다.</p>',
+
+      '<h2>얼마나 두나</h2>',
+      '<ul>' +
+        '<li>계정과 매물은 <b>지우실 때까지</b> 둡니다.</li>' +
+        '<li>실수로 지웠을 때를 위해 데이터베이스가 <b>30일</b> 동안 되돌릴 수 있는 기록을 갖고 있습니다.</li>' +
+        '<li>매일 한 번 전체를 암호로 잠가 백업하고 <b>90일</b> 뒤 자동으로 지웁니다.</li>' +
+        '<li>로그인 실패 기록은 잠금이 풀리면 지웁니다.</li>' +
+      '</ul>',
+
+      '<h2>누구에게 가나</h2>',
+      '<p>팔지 않고, 광고에 쓰지 않고, 물어보지 않은 곳에 넘기지 않습니다. 다만 서비스를 돌리려면 ' +
+        '아래 세 곳을 거칩니다.</p>',
+      '<ul>' +
+        '<li><b>Cloudflare</b> — 서비스와 데이터베이스가 올라가 있는 곳입니다.</li>' +
+        '<li><b>Google</b> — 구글로 로그인하실 때만, 그 계정이 맞는지 확인하려고 오갑니다.</li>' +
+        '<li><b>Google Fonts</b> — 화면 글꼴을 <code>fonts.googleapis.com</code> 과 ' +
+          '<code>fonts.gstatic.com</code> 에서 받아옵니다. 이때 접속하신 아이피와 브라우저 종류가 ' +
+          '구글에 전달됩니다.</li>' +
+      '</ul>',
+
+      '<h2>브라우저에 남는 것</h2>',
+      '<ul>' +
+        '<li><code>hh_session</code> — 로그인을 유지하는 쿠키입니다. 30일 뒤 만료되고, ' +
+          '자바스크립트로는 읽을 수 없게 막아 두었습니다.</li>' +
+        '<li><code>hh_oauth</code> — 구글에 다녀오는 10분 동안만 있는 쿠키입니다.</li>' +
+        '<li>매물과 설정의 사본이 브라우저 저장소에 남습니다. 화면을 빨리 띄우려는 것이고, ' +
+          '로그아웃하면 지웁니다.</li>' +
+      '</ul>',
+      '<p>광고나 추적에 쓰는 쿠키는 없습니다.</p>',
+
+      '<h2>지우고 싶을 때</h2>',
+      '<ul>' +
+        '<li>매물은 장부에서 하나씩 지울 수 있습니다.</li>' +
+        '<li>계정을 통째로 지우시려면 아래 주소로 알려 주세요. 계정과 주인으로 있는 장부, ' +
+          '그 안의 매물·사진·설정을 함께 지웁니다.</li>' +
+        '<li>지운 뒤에도 위에 적은 백업에는 최대 90일 동안 남아 있다가 사라집니다.</li>' +
+      '</ul>',
+
+      '<h2>물어보실 곳</h2>',
+      '<p><a href="mailto:' + LEGAL_MAIL + '">' + LEGAL_MAIL + '</a></p>',
+      '<p class="note">이 글이 바뀌면 시행일을 고치고 이 페이지에 그대로 둡니다.</p>'
+    ].join('')
+  };
+}
+
+function termsDoc() {
+  return {
+    title: '서비스 약관',
+    body: [
+      '<p class="lede">하우스헌팅은 개인이 무료로 만들어 두는 집 고르기 장부입니다. ' +
+        '쓰시기 전에 아래를 한 번 읽어 주세요.</p>',
+
+      '<h2>어떤 서비스인가</h2>',
+      '<p>전세와 매매 후보를 모아 금액과 넓이, 점수를 견주어 보는 도구입니다. ' +
+        '중개를 하지 않고, 매물을 팔거나 소개하지 않으며, 어떤 거래에도 끼지 않습니다.</p>',
+
+      '<h2>계정</h2>',
+      '<ul>' +
+        '<li>본인이 쓰는 이메일로 만들어 주세요.</li>' +
+        '<li>비밀번호는 본인이 지킵니다. 남과 나누지 마세요.</li>' +
+        '<li>한 장부에 6명까지 초대해 함께 볼 수 있습니다. 초대한 사람은 그 장부의 매물을 ' +
+          '모두 읽고 고칠 수 있으니, 아는 사람에게만 링크를 주세요.</li>' +
+      '</ul>',
+
+      '<h2>적으신 내용</h2>',
+      '<ul>' +
+        '<li>장부에 적으신 내용은 적으신 분의 것입니다. 서비스를 돌리는 데 필요한 만큼 ' +
+          '(저장하고, 화면에 보여주고, 백업하는 것) 말고는 쓰지 않습니다.</li>' +
+        '<li>남의 개인정보를 함부로 올리지 말아 주세요. 중개사무소 연락처처럼 업무로 공개된 ' +
+          '정보라도 필요한 만큼만 적어 두시길 권합니다.</li>' +
+      '</ul>',
+
+      '<h2>하지 말아야 할 것</h2>',
+      '<ul>' +
+        '<li>자동화 도구로 계정이나 매물을 무더기로 만드는 일</li>' +
+        '<li>남의 계정이나 장부에 들어가려 시도하는 일</li>' +
+        '<li>법을 어기는 목적으로 쓰는 일</li>' +
+      '</ul>',
+      '<p>이런 일이 확인되면 계정을 막거나 지울 수 있습니다.</p>',
+
+      '<h2>꼭 알아두실 것</h2>',
+      '<ul>' +
+        '<li><b>계산 값은 참고용입니다.</b> 월 환산 금액, 점수, 예산 상한은 넣으신 숫자로 ' +
+          '단순하게 셈한 추정입니다. 실제 대출 조건과 금리, 세금, 중개 수수료는 이와 다릅니다.</li>' +
+        '<li><b>매물 정보는 확인하지 않습니다.</b> 화면에 보이는 값은 이용자가 직접 적은 것이고 ' +
+          '운영자가 맞는지 살피지 않습니다.</li>' +
+        '<li><b>거래 판단은 이용자 책임입니다.</b> 이 장부를 보고 내린 결정과 그 결과에 대해 ' +
+          '운영자는 책임지지 않습니다. 계약 전에는 반드시 등기부와 현장, 중개사를 통해 확인하세요.</li>' +
+        '<li><b>개인이 무료로 굴리는 서비스입니다.</b> 끊김 없는 제공이나 데이터가 영원히 남는 것을 ' +
+          '약속하지 않습니다. 중요한 내용은 따로 적어 두시길 권합니다.</li>' +
+      '</ul>',
+
+      '<h2>한도</h2>',
+      '<p>서버가 감당할 만큼만 두려고 아래처럼 막아 두었습니다.</p>',
+      '<ul>' +
+        '<li>한 장부에 매물 ' + MAX_PROPS + '곳, 사람 ' + MAX_MEMBERS + '명까지</li>' +
+        '<li>사진은 한 장부에 ' + MAX_PHOTOS_DB + '장까지, 한 장에 ' +
+          Math.round(MAX_PHOTO_DB / 1024) + 'KB 까지</li>' +
+      '</ul>',
+
+      '<h2>바뀌거나 멈출 때</h2>',
+      '<p>기능이 예고 없이 바뀌거나 서비스가 멈출 수 있습니다. 문을 아주 닫게 되면 ' +
+        '데이터를 내려받으실 수 있도록 미리 알리겠습니다. 약관이 바뀌면 이 페이지를 고치고 ' +
+        '시행일을 바꿉니다.</p>',
+
+      '<h2>물어보실 곳</h2>',
+      '<p><a href="mailto:' + LEGAL_MAIL + '">' + LEGAL_MAIL + '</a></p>'
+    ].join('')
+  };
+}
+
+const LEGAL_CSS = [
+  'body{display:block;place-items:initial;min-height:0;padding:0}',
+  '.doc{max-width:700px;margin:0 auto;padding:36px 22px 72px;text-align:left}',
+  '.crumb{margin:0 0 22px;font-family:Jua,"Apple SD Gothic Neo",sans-serif;font-size:17px}',
+  '.crumb a{color:var(--ink);text-decoration:none}',
+  '.doc h1{font-size:27px;text-align:left;margin:0 0 4px}',
+  '.when{margin:0 0 30px;color:var(--muted);font-size:12.5px}',
+  '.lede{margin:0 0 30px;padding:14px 16px;background:var(--sun-soft);border-radius:14px;font-size:14px}',
+  '.doc h2{font-family:Jua,"Apple SD Gothic Neo",sans-serif;font-size:19px;font-weight:400;',
+  'margin:34px 0 10px;padding-top:16px;border-top:1.5px solid var(--line)}',
+  '.doc h3{font-size:14px;font-weight:600;margin:20px 0 8px;color:var(--accent)}',
+  '.doc p{margin:0 0 12px;font-size:14.5px;line-height:1.75}',
+  '.doc ul{margin:0 0 14px;padding-left:19px}',
+  '.doc li{margin:0 0 9px;font-size:14.5px;line-height:1.75}',
+  '.doc b{font-weight:600}',
+  '.doc code{background:var(--sun-soft);border-radius:5px;padding:1px 5px;font-size:12.5px}',
+  '.doc hr{border:0;border-top:1.5px solid var(--line);margin:40px 0 18px}',
+  '.note{color:var(--muted);font-size:12.5px;margin-top:26px}'
+].join('');
 
 function ageScript(next) {
   return [
@@ -796,6 +1012,8 @@ const AUTH_CSS = [
 '.pic.busy .mg{animation:hunt 3.2s ease-in-out infinite}',
 '@media (prefers-reduced-motion:reduce){.prog i,.pic.busy .mg{animation:none}}',
 '.alt{margin:20px 0 0;font-size:13px;color:var(--muted);text-align:center}',
+'.fine{margin:14px 0 0;font-size:11.5px;color:var(--muted);text-align:center}',
+'.fine a{color:var(--muted)}',
 'a{color:var(--accent);text-underline-offset:3px}',
 ':focus-visible{outline:2.5px solid var(--sun);outline-offset:2px}',
 '@media (prefers-reduced-motion:reduce){*{transition:none!important}}'
