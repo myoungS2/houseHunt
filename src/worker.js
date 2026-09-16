@@ -23,6 +23,8 @@ const MAX_PHOTO_DB = 700 * 1024;   // R2 없이 D1에 담을 때 한 장 크기
 const MAX_PHOTOS_DB = 300;        // R2 없이 D1에 담을 때 장부당 장수
 const MAX_MEMBERS  = 6;        // 한 장부에 들어올 수 있는 사람 수
 const INVITE_DAYS  = 7;        // 초대 링크가 살아 있는 기간
+const MAX_PROPS    = 300;      // 한 장부에 담을 수 있는 매물 수
+const MAX_PROP_LEN = 200000;   // 매물 한 곳의 JSON 길이
 
 const LOGIN_WINDOW_MS = 15 * 60 * 1000;
 const LOGIN_MAX_FAIL  = 8;
@@ -31,6 +33,17 @@ const SIGNUP_WINDOW_MS = 60 * 60 * 1000;
 const SIGNUP_MAX       = 5;
 
 const SESSION_COOKIE = 'hh_session';
+
+/* ── 구글 로그인 ── */
+const OAUTH_COOKIE = 'hh_oauth';
+const OAUTH_TTL_MS = 10 * 60 * 1000;   // 구글에 다녀오는 데 주는 시간
+const GOOGLE_AUTH  = 'https://accounts.google.com/o/oauth2/v2/auth';
+const GOOGLE_TOKEN = 'https://oauth2.googleapis.com/token';
+const GOOGLE_ISS   = ['accounts.google.com', 'https://accounts.google.com'];
+
+/* 연령대. 통계를 내려고 받는 값이라 이 여섯 중 하나이거나 아예 없거나입니다. */
+const AGE_BANDS = ['10s', '20s', '30s', '40s', '50s', '60s'];
+function validAge(v) { return AGE_BANDS.indexOf(String(v)) >= 0; }
 
 export default {
   async fetch(req, env) {
@@ -117,7 +130,12 @@ function sameOrigin(req, url) {
 
 /* ═══ 세션 ══════════════════════════════════ */
 async function currentUser(req, env) {
-  if (env.ALLOW_OPEN === '1') return { email: 'open@local', name: '공용', key: 'open@local' };
+  /* 로컬 테스트용. 장부까지 붙여 줘야 API 가 돕니다. */
+  if (env.ALLOW_OPEN === '1') {
+    const u = { email: 'open@local', name: '공용', key: 'open@local' };
+    u.book = await resolveBook(env, u, null);
+    return u;
+  }
 
   const raw = readCookie(req, SESSION_COOKIE);
   if (!raw) return null;
@@ -264,15 +282,100 @@ async function handleAuth(req, env, url) {
     return new Response(null, { status: 303, headers: h });
   }
 
+  /* ── 구글로 시작하기 ──
+   * 흔한 순서 그대로입니다. 여기서 임의값 세 개(state·nonce·PKCE 검증값)를 만들어
+   * 서명한 쿠키에 담아 두고, 구글에 다녀온 뒤 그 쿠키와 맞춰 봅니다.
+   * 쿠키는 서명돼 있으므로 남이 지어낸 값으로는 통과하지 못합니다.
+   */
+  if (path === '/auth/google' && req.method === 'GET') {
+    if (!googleOn(env)) return redirect(url.origin + '/auth/login?e=' + encodeURIComponent('구글 로그인이 아직 켜져 있지 않습니다'));
+    const st = {
+      s: b64(crypto.getRandomValues(new Uint8Array(24))),
+      n: b64(crypto.getRandomValues(new Uint8Array(16))),
+      v: b64(crypto.getRandomValues(new Uint8Array(32))),
+      next: safeNext(url.searchParams.get('next')),
+      x: Date.now() + OAUTH_TTL_MS
+    };
+    const q = new URLSearchParams({
+      client_id: env.GOOGLE_CLIENT_ID,
+      redirect_uri: redirectUri(url),
+      response_type: 'code',
+      scope: 'openid email profile',
+      state: st.s,
+      nonce: st.n,
+      code_challenge: await s256(st.v),
+      code_challenge_method: 'S256',
+      prompt: 'select_account'
+    });
+    const h = new Headers({ location: GOOGLE_AUTH + '?' + q.toString() });
+    h.append('set-cookie', await oauthCookie(env, st, secure));
+    return new Response(null, { status: 302, headers: h });
+  }
+
+  if (path === '/auth/google/callback' && req.method === 'GET') {
+    const back = (msg) => {
+      const h = new Headers({ location: url.origin + '/auth/login?e=' + encodeURIComponent(msg) });
+      h.append('set-cookie', killCookie(OAUTH_COOKIE, secure));
+      return new Response(null, { status: 302, headers: h });
+    };
+    if (!googleOn(env)) return back('구글 로그인이 아직 켜져 있지 않습니다');
+
+    const st = await readOauthCookie(req, env);
+    if (!st) return back('로그인이 시간을 넘겼습니다. 다시 해주세요');
+    if (url.searchParams.get('error')) return back('구글 로그인을 그만두었습니다');
+
+    const code = String(url.searchParams.get('code') || '');
+    if (!code || !eqStr(String(url.searchParams.get('state') || ''), st.s)) {
+      return back('로그인 정보가 맞지 않습니다. 다시 해주세요');
+    }
+
+    let claims;
+    try { claims = await googleClaims(env, url, code, st); }
+    catch (e) { return back((e && e.message) || '구글에서 정보를 받지 못했습니다'); }
+
+    const email = String(claims.email || '').toLowerCase();
+    if (!validEmail(email)) return back('구글 계정에서 이메일을 받지 못했습니다');
+    if (claims.email_verified !== true && claims.email_verified !== 'true') {
+      return back('구글에서 이메일 확인이 끝나지 않은 계정입니다');
+    }
+
+    const allow = (env.ALLOWED_EMAILS || '').split(',').map(s => s.trim().toLowerCase()).filter(Boolean);
+    if (allow.length && allow.indexOf(email) < 0) return back('이 이메일은 초대 목록에 없습니다');
+
+    /* 한 곳에서 계정을 무더기로 찍어내는 것만 막습니다. 이미 있는 계정의 로그인은
+       막지 않으므로, 같은 사무실에서 여럿이 들어와도 아무 일 없습니다. */
+    const ipKey = 's:' + clientIp(req);
+    const blocked = await rateBlocked(env, ipKey);
+    const r = await linkGoogleUser(env, email, String(claims.sub || ''), claims.name, !blocked);
+    if (r.error) return back(r.error);
+    if (r.created) await rateFail(env, ipKey, SIGNUP_WINDOW_MS, SIGNUP_MAX, SIGNUP_WINDOW_MS);
+
+    /* 막 만들어진 계정이면 연령대를 한 번 묻고 앱으로 보냅니다 */
+    const to = r.created ? '/auth/age?next=' + encodeURIComponent(st.next) : st.next;
+    const h = new Headers({ location: url.origin + to });
+    h.append('set-cookie', await sessionCookie(env, email, r.epoch, secure));
+    h.append('set-cookie', killCookie(OAUTH_COOKIE, secure));
+    return new Response(null, { status: 302, headers: h });
+  }
+
+  /* ── 연령대 묻기 ── */
+  if (path === '/auth/age' && req.method === 'GET') {
+    const u = await currentUser(req, env);
+    if (!u) return redirect(url.origin + '/auth/login');
+    return agePage(safeNext(url.searchParams.get('next')));
+  }
+
   if (path === '/auth/login' && req.method === 'GET') {
     const u = await currentUser(req, env);
     if (u) return redirect(url.origin + '/');
-    return authPage('login', null, safeNext(url.searchParams.get('next')));
+    return authPage('login', null, safeNext(url.searchParams.get('next')), false, '',
+      googleOn(env), url.searchParams.get('e') || '');
   }
 
   if (path === '/auth/signup' && req.method === 'GET') {
     const nx = safeNext(url.searchParams.get('next'));
-    return authPage('signup', null, nx, await inviteOk(env, nx), url.searchParams.get('code') || '');
+    return authPage('signup', null, nx, await inviteOk(env, nx),
+      url.searchParams.get('code') || '', googleOn(env));
   }
 
   if (path === '/auth/password' && req.method === 'GET') {
@@ -301,7 +404,9 @@ async function handleAuth(req, env, url) {
 
     const row = await env.DB.prepare(
       'SELECT email, name, pw, session_epoch FROM users WHERE email = ?').bind(email).first();
-    const ok = row ? await verifyKey(body.key, row.pw) : (await dummyWork(), false);
+    /* 구글로만 들어온 계정은 pw 가 비어 있습니다. 그때도 같은 시간을 쓰게 해서,
+       응답이 빨리 온다는 것만으로 "이 계정은 구글 전용"임을 알아채지 못하게 합니다. */
+    const ok = (row && row.pw) ? await verifyKey(body.key, row.pw) : (await dummyWork(), false);
     if (!ok) {
       await rateFail(env, emKey, LOGIN_WINDOW_MS, LOGIN_MAX_FAIL, LOGIN_LOCK_MS);
       await rateFail(env, ipKey, LOGIN_WINDOW_MS, LOGIN_MAX_FAIL * 3, LOGIN_LOCK_MS);
@@ -344,8 +449,8 @@ async function handleAuth(req, env, url) {
     const pw = await hashKey(body.key);
     const name = String(body.name || '').trim().slice(0, 40) || email.split('@')[0];
     await env.DB.prepare(
-      'INSERT INTO users (email, name, pw, session_epoch, created_at) VALUES (?,?,?,1,?)'
-    ).bind(email, name, pw, nowIso()).run();
+      'INSERT INTO users (email, name, pw, session_epoch, created_at, provider, age_band) VALUES (?,?,?,1,?,?,?)'
+    ).bind(email, name, pw, nowIso(), 'password', validAge(body.age) ? body.age : null).run();
     await rateFail(env, ipKey, SIGNUP_WINDOW_MS, SIGNUP_MAX, SIGNUP_WINDOW_MS);
 
     const h = new Headers({ 'content-type': 'application/json; charset=utf-8' });
@@ -380,7 +485,127 @@ async function handleAuth(req, env, url) {
     return new Response(JSON.stringify({ ok: true, next: '/' }), { headers: h });
   }
 
+  /* ── 연령대 저장 ──
+   * 안 밝히고 넘어가도 됩니다. 그때는 age_band 가 비고, 통계에서 '안 밝힘'으로 셉니다.
+   */
+  if (path === '/auth/age') {
+    const u = await currentUser(req, env);
+    if (!u) return json({ error: '로그인이 필요합니다' }, 401);
+    const age = validAge(body.age) ? body.age : null;
+    await env.DB.prepare('UPDATE users SET age_band = ? WHERE email = ?').bind(age, u.key).run();
+    return json({ ok: true, next: safeNext(body.next) });
+  }
+
   return new Response('없는 경로입니다', { status: 404, headers: baseHeaders() });
+}
+
+/* ═══ 구글 로그인 ═══════════════════════════
+ * 비밀은 둘 다 secret 으로 넣습니다. 하나라도 없으면 구글 버튼이 아예 안 나옵니다.
+ *   npx wrangler secret put GOOGLE_CLIENT_ID
+ *   npx wrangler secret put GOOGLE_CLIENT_SECRET
+ */
+function googleOn(env) { return !!(env.GOOGLE_CLIENT_ID && env.GOOGLE_CLIENT_SECRET); }
+function redirectUri(url) { return url.origin + '/auth/google/callback'; }
+
+async function s256(v) {
+  return b64(new Uint8Array(await crypto.subtle.digest('SHA-256', new TextEncoder().encode(v))));
+}
+
+async function oauthCookie(env, st, secure) {
+  const payload = enc(JSON.stringify(st));
+  const sig = await sign(env, payload);
+  return OAUTH_COOKIE + '=' + payload + '.' + sig +
+    '; Path=/auth; Max-Age=' + Math.round(OAUTH_TTL_MS / 1000) +
+    '; HttpOnly; SameSite=Lax' + (secure ? '; Secure' : '');
+}
+async function readOauthCookie(req, env) {
+  const raw = readCookie(req, OAUTH_COOKIE);
+  if (!raw) return null;
+  const cut = raw.lastIndexOf('.');
+  if (cut < 0) return null;
+  const payload = raw.slice(0, cut);
+  if (!(await sigOk(env, payload, raw.slice(cut + 1)))) return null;
+  let st;
+  try { st = JSON.parse(dec(payload)); } catch (e) { return null; }
+  if (!st || !st.s || !st.n || !st.v || !st.x || st.x < Date.now()) return null;
+  return st;
+}
+function killCookie(name, secure) {
+  return name + '=; Path=/auth; Max-Age=0; HttpOnly; SameSite=Lax' + (secure ? '; Secure' : '');
+}
+
+/* 받은 코드를 구글에 주고 사람 정보를 받아 옵니다.
+ * id_token 의 서명은 따로 확인하지 않습니다. 브라우저를 거치지 않고 구글의 토큰 창구에
+ * 우리가 직접 HTTPS 로 물어봐서 받은 값이라, 중간에 누가 바꿔치기할 자리가 없습니다.
+ * (OpenID Connect Core 3.1.3.7) 대신 누구에게·누가·언제 발급했는지는 모두 맞춰 봅니다.
+ */
+async function googleClaims(env, url, code, st) {
+  const r = await fetch(GOOGLE_TOKEN, {
+    method: 'POST',
+    headers: { 'content-type': 'application/x-www-form-urlencoded' },
+    body: new URLSearchParams({
+      code,
+      client_id: env.GOOGLE_CLIENT_ID,
+      client_secret: env.GOOGLE_CLIENT_SECRET,
+      redirect_uri: redirectUri(url),
+      grant_type: 'authorization_code',
+      code_verifier: st.v
+    }).toString()
+  });
+  if (!r.ok) throw new Error('구글이 로그인을 받아주지 않았습니다');
+
+  const t = await r.json();
+  const parts = String(t.id_token || '').split('.');
+  if (parts.length !== 3) throw new Error('구글이 보낸 정보를 읽지 못했습니다');
+
+  let c;
+  try { c = JSON.parse(dec(parts[1])); } catch (e) { throw new Error('구글이 보낸 정보를 읽지 못했습니다'); }
+  if (GOOGLE_ISS.indexOf(String(c.iss)) < 0) throw new Error('구글이 보낸 정보가 아닙니다');
+  if (!eqStr(String(c.aud || ''), String(env.GOOGLE_CLIENT_ID))) throw new Error('다른 앱에 발급된 정보입니다');
+  if (!(Number(c.exp) * 1000 > Date.now())) throw new Error('구글이 보낸 정보가 오래됐습니다');
+  if (!eqStr(String(c.nonce || ''), st.n)) throw new Error('로그인 정보가 맞지 않습니다');
+  return c;
+}
+
+/* 구글에서 온 사람을 계정에 잇습니다.
+ * 사람을 알아보는 기준은 이메일이 아니라 구글이 주는 sub 입니다. 구글에서 이메일을
+ * 바꿔도 같은 사람으로 남고, 남이 그 이메일을 새로 받아도 남의 장부로는 못 들어갑니다.
+ */
+async function linkGoogleUser(env, email, sub, name, allowCreate) {
+  if (!sub) return { error: '구글 계정을 알아보지 못했습니다' };
+  const at = nowIso();
+
+  const bySub = await env.DB.prepare(
+    'SELECT email, session_epoch FROM users WHERE google_sub = ?').bind(sub).first();
+  if (bySub) {
+    await env.DB.prepare('UPDATE users SET last_login = ? WHERE email = ?').bind(at, bySub.email).run();
+    return { email: bySub.email, epoch: Number(bySub.session_epoch), created: false };
+  }
+
+  /* 같은 이메일로 이미 비밀번호 계정이 있으면 한 계정으로 합칩니다.
+     구글이 email_verified 를 준 뒤에만 여기까지 옵니다. */
+  const byEmail = await env.DB.prepare(
+    'SELECT email, session_epoch FROM users WHERE email = ?').bind(email).first();
+  if (byEmail) {
+    await env.DB.prepare(
+      "UPDATE users SET google_sub = ?, last_login = ?, " +
+      "provider = CASE WHEN pw IS NULL THEN 'google' ELSE 'both' END WHERE email = ?"
+    ).bind(sub, at, email).run();
+    return { email: byEmail.email, epoch: Number(byEmail.session_epoch), created: false };
+  }
+
+  if (!allowCreate) return { error: '가입 시도가 너무 많습니다. 잠시 뒤에 다시 해주세요' };
+
+  const nm = String(name || '').trim().slice(0, 40) || email.split('@')[0];
+  try {
+    await env.DB.prepare(
+      'INSERT INTO users (email, name, pw, session_epoch, created_at, last_login, provider, google_sub) ' +
+      'VALUES (?,?,NULL,1,?,?,?,?)'
+    ).bind(email, nm, at, at, 'google', sub).run();
+  } catch (e) {
+    return { error: '계정을 만들지 못했습니다. 잠시 뒤에 다시 해주세요' };
+  }
+  return { email, epoch: 1, created: true };
 }
 
 /* ═══ 로그인·가입 화면 ══════════════════════ */
@@ -391,7 +616,7 @@ function safeNext(next) {
   return next;
 }
 
-function authPage(kind, email, next, invitedTo, codeHint) {
+function authPage(kind, email, next, invitedTo, codeHint, google, notice) {
   const nonce = b64(crypto.getRandomValues(new Uint8Array(16)));
   const T = {
     login:    { title: '하우스헌팅', lead: '로그인', btn: '로그인', path: '/auth/login' },
@@ -406,6 +631,7 @@ function authPage(kind, email, next, invitedTo, codeHint) {
       row('name', '이름 (안 써도 됩니다)', 'text', 'name'),
       row('pw', '비밀번호', 'password', 'new-password', MIN_PW + '자 이상'),
       row('pw2', '비밀번호 다시', 'password', 'new-password'),
+      ageRow(),
       invitedTo ? '' : row('code', '가입 코드', 'text', 'off', '받은 코드', false, codeHint)
     ].join('') :
     kind === 'password' ? [
@@ -424,6 +650,12 @@ function authPage(kind, email, next, invitedTo, codeHint) {
     kind === 'signup' ? '<p class="alt">이미 계정이 있나요? <a href="/auth/login' + q + '">로그인</a></p>' :
                         '<p class="alt"><a href="/">장부로 돌아가기</a></p>';
 
+  /* 구글 비밀이 들어와 있을 때만 버튼이 생깁니다. 없으면 화면에 흔적도 안 남습니다. */
+  const gate = (google && kind !== 'password')
+    ? '<a class="gbtn" href="/auth/google' + q + '">' + GOOGLE_MARK + '구글로 계속하기</a>' +
+      '<div class="or"><span>또는 이메일로</span></div>'
+    : '';
+
   const html = '<!doctype html><html lang="ko"><head><meta charset="utf-8">' +
     '<meta name="viewport" content="width=device-width,initial-scale=1">' +
     '<meta name="color-scheme" content="light dark"><title>' + T.lead + ' · 하우스헌팅</title>' +
@@ -434,9 +666,9 @@ function authPage(kind, email, next, invitedTo, codeHint) {
     '<main class="card">' +
       SCENE_SVG +
       '<h1>' + T.title + '</h1><p class="lead">' + T.lead + '</p>' +
-      '<div class="prog" id="prog" aria-hidden="true"><i></i></div>' +
+      '<div class="prog" id="prog" aria-hidden="true"><i></i></div>' + gate +
       '<form id="f" novalidate>' + fields +
-        '<p class="err" id="err" hidden></p>' +
+        '<p class="err" id="err"' + (notice ? '>' + esc(notice) : ' hidden>') + '</p>' +
         '<button type="submit" id="go">' + T.btn + '</button>' +
       '</form>' + foot +
     '</main>' +
@@ -455,6 +687,68 @@ function row(id, label, type, ac, ph, autofocus, value) {
     '<input id="' + id + '" type="' + type + '" autocomplete="' + ac + '"' +
     (ph ? ' placeholder="' + esc(ph) + '"' : '') +
     (value ? ' value="' + esc(value) + '"' : '') + (autofocus ? ' autofocus' : '') + '>';
+}
+
+function ageLabel(a) { return a === '60s' ? '60대 이상' : String(a).replace('s', '') + '대'; }
+function ageRow(value) {
+  return '<label for="age">연령대</label><select id="age">' +
+    '<option value="">밝히지 않음</option>' +
+    AGE_BANDS.map(a => '<option value="' + a + '"' + (a === value ? ' selected' : '') + '>' +
+      ageLabel(a) + '</option>').join('') + '</select>';
+}
+
+const GOOGLE_MARK = '<svg class="g" viewBox="0 0 48 48" width="18" height="18" aria-hidden="true">' +
+  '<path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"/>' +
+  '<path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"/>' +
+  '<path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z"/>' +
+  '<path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.15 1.45-4.92 2.3-8.16 2.3-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"/></svg>';
+
+/* 구글로 막 들어온 사람에게 연령대만 한 번 묻습니다. 건너뛰어도 그만입니다. */
+function agePage(next) {
+  const nonce = b64(crypto.getRandomValues(new Uint8Array(16)));
+  const html = '<!doctype html><html lang="ko"><head><meta charset="utf-8">' +
+    '<meta name="viewport" content="width=device-width,initial-scale=1">' +
+    '<meta name="color-scheme" content="light dark"><title>시작하기 · 하우스헌팅</title>' +
+    '<link rel="preconnect" href="https://fonts.googleapis.com">' +
+    '<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>' +
+    '<link href="https://fonts.googleapis.com/css2?family=Jua&family=IBM+Plex+Sans+KR:wght@400;500;600&display=swap" rel="stylesheet">' +
+    '<style nonce="' + nonce + '">' + AUTH_CSS + '</style></head><body>' +
+    '<main class="card">' + SCENE_SVG +
+      '<h1>하우스헌팅</h1><p class="lead">시작하기 전에</p>' +
+      '<p class="who">연령대 하나만 골라 주세요. 또래가 어떤 집을 보고 있는지 견주는 데만 씁니다.</p>' +
+      '<form id="f" novalidate>' + ageRow() +
+        '<p class="err" id="err" hidden></p>' +
+        '<button type="submit" id="go">시작하기</button>' +
+      '</form>' +
+      '<p class="alt"><a id="skip" href="' + esc(next) + '">그냥 넘어가기</a></p>' +
+    '</main>' +
+    '<script nonce="' + nonce + '">' + ageScript(next) + '</script></body></html>';
+
+  return new Response(html, {
+    headers: Object.assign(baseHeaders(), {
+      'content-type': 'text/html; charset=utf-8',
+      'cache-control': 'no-store',
+      'content-security-policy': csp(nonce)
+    })
+  });
+}
+
+function ageScript(next) {
+  return [
+    '(function(){',
+    '  var NEXT=' + JSON.stringify(next) + ';',
+    '  var f=document.getElementById("f"), go=document.getElementById("go");',
+    '  f.addEventListener("submit", function(e){',
+    '    e.preventDefault(); go.disabled=true;',
+    '    fetch("/auth/age",{method:"POST",credentials:"same-origin",',
+    '      headers:{"content-type":"application/json"},',
+    '      body:JSON.stringify({age:document.getElementById("age").value,next:NEXT})})',
+    '     .then(function(r){return r.json()})',
+    '     .then(function(j){location.href=(j&&j.next)||NEXT})',
+    '     .catch(function(){location.href=NEXT});',
+    '  });',
+    '})();'
+  ].join('\n');
 }
 
 const SCENE_SVG = '<div class="pic" aria-hidden="true"><svg viewBox="0 0 240 152" fill="none" stroke="var(--ink)" stroke-width="2.6" stroke-linejoin="round" stroke-linecap="round"><path d="M184 40a9 9 0 0 1 0-18 12 12 0 0 1 22-4 12 12 0 0 1 6 22z" fill="var(--surface)"/><g class="mg"><path d="M67.5 47.5 78.5 58.5" stroke-width="5.5"/><circle cx="55" cy="35" r="14.5" fill="var(--surface)"/></g><rect x="5" y="126" width="230" height="17" rx="8.5" fill="var(--mint)"/><path d="M15.5 126v-16"/><circle cx="15.5" cy="103" r="11" fill="var(--leaf)"/><rect x="30" y="96" width="42" height="30" fill="var(--surface)"/><path d="M24 96 51 73l27 23" fill="var(--leaf)"/><rect x="34.5" y="101" width="9.5" height="9.5" rx="1.5" fill="var(--mint)"/><rect x="52" y="110" width="13" height="16" rx="2" fill="var(--sun)"/><path d="M140 74V57h9.5v11" fill="var(--surface)"/><rect x="92" y="82" width="62" height="44" fill="var(--surface)"/><path d="M85 82 123 51l38 31" fill="var(--sun)"/><rect x="98.5" y="90" width="15" height="15" rx="2" fill="var(--mint)"/><path d="M106 90v15M98.5 97.5h15" stroke-width="2"/><rect x="132.5" y="90" width="15" height="15" rx="2" fill="var(--mint)"/><path d="M140 90v15M132.5 97.5h15" stroke-width="2"/><rect x="113" y="104" width="20" height="22" rx="2.5" fill="var(--surface)"/><circle cx="128" cy="116" r="1.9" fill="var(--ink)" stroke="none"/><rect x="174" y="100" width="40" height="26" fill="var(--surface)"/><path d="M168 100 194 79l26 21" fill="var(--mint)"/><rect x="184" y="106" width="11" height="11" rx="1.5" fill="var(--leaf)"/><path d="M226 126v-14"/><circle cx="226" cy="105" r="9.5" fill="var(--leaf)"/></svg></div>';
@@ -477,9 +771,16 @@ const AUTH_CSS = [
 '.lead{margin:2px 0 24px;color:var(--muted);font-size:13px;text-align:center}',
 '.who{margin:0 0 20px;padding:9px 14px;background:var(--sun-soft);border-radius:12px;font-size:13px;color:var(--ink);text-align:center}',
 'label{display:block;font-size:11.5px;color:var(--muted);font-weight:600;margin:0 0 5px}',
-'input{width:100%;padding:10px 13px;border:1.5px solid var(--line);border-radius:12px;background:var(--surface);',
+'input,select{width:100%;padding:10px 13px;border:1.5px solid var(--line);border-radius:12px;background:var(--surface);',
 'color:var(--ink);font:inherit;font-size:14px;margin-bottom:15px}',
-'input:focus{outline:none;border-color:var(--sun);box-shadow:0 0 0 3.5px var(--sun-soft)}',
+'input:focus,select:focus{outline:none;border-color:var(--sun);box-shadow:0 0 0 3.5px var(--sun-soft)}',
+'.gbtn{display:flex;align-items:center;justify-content:center;gap:9px;width:100%;padding:11px;',
+'border:1.5px solid var(--line);border-radius:999px;background:var(--surface);color:var(--ink);',
+'font-weight:600;font-size:14.5px;text-decoration:none;transition:background .15s}',
+'.gbtn:hover{background:var(--sun-soft)}',
+'.gbtn .g{flex:none}',
+'.or{display:flex;align-items:center;gap:10px;margin:17px 0 15px;color:var(--muted);font-size:12px}',
+'.or::before,.or::after{content:"";flex:1;height:1.5px;background:var(--line)}',
 'button{width:100%;padding:12px;border:0;border-radius:999px;background:var(--sun);color:var(--sun-ink);',
 'font:inherit;font-weight:600;font-size:14.5px;cursor:pointer;margin-top:6px;',
 'box-shadow:0 2px 0 color-mix(in srgb,var(--sun) 72%,#000);transition:transform .12s,background .15s}',
@@ -546,7 +847,8 @@ function authScript(kind, postPath, next) {
 '   body.key=await derive(me,val("pw")); body.newKey=await derive(me,val("pw2"));',
 '  }else{',
 '   body.email=email; body.key=await derive(email,val("pw"));',
-'   if(KIND==="signup"){ body.name=val("name").trim(); body.code=val("code").trim(); }',
+'   if(KIND==="signup"){ body.name=val("name").trim(); body.code=val("code").trim();',
+'    var ageSel=document.getElementById("age"); if(ageSel) body.age=ageSel.value; }',
 '   body.next=NEXT;',
 '  }',
 '  var r=await fetch(PATH,{method:"POST",credentials:"same-origin",',
@@ -680,10 +982,23 @@ async function handleApi(req, env, url, u) {
     const items = Array.isArray(body.items) ? body.items : [];
     if (!items.length) return json({ ok: true, saved: 0 });
     if (items.length > 200) return json({ error: '한 번에 200곳까지만 저장합니다' }, 400);
+
+    /* 이미 있는 매물을 다시 올리는 건 늘어나는 게 아닙니다. 새로 생기는 것만 셉니다. */
+    const have = await env.DB.prepare('SELECT id FROM properties WHERE book_id = ?').bind(bk).all();
+    const known = new Set((have.results || []).map(r => String(r.id)));
+    const keep = items.filter(p => p && p.id);
+    const fresh = keep.filter(p => !known.has(String(p.id))).length;
+    if (known.size + fresh > MAX_PROPS) {
+      return json({ error: '한 장부에는 매물 ' + MAX_PROPS + '곳까지 담을 수 있습니다' }, 409);
+    }
+    for (const p of keep) {
+      if (JSON.stringify(p).length > MAX_PROP_LEN) return json({ error: '내용이 너무 긴 매물이 있습니다' }, 413);
+    }
+
     const at = nowIso();
-    await env.DB.batch(items.filter(p => p && p.id).map(p =>
-      env.DB.prepare(UPSERT_PROP).bind(bk, String(p.id), JSON.stringify(p), at, uk)));
-    return json({ ok: true, saved: items.length });
+    await env.DB.batch(keep.map(p =>
+      env.DB.prepare(UPSERT_PROP).bind(bk, String(p.id), JSON.stringify(p), at, uk, uk)));
+    return json({ ok: true, saved: keep.length });
   }
 
   const one = path.match(/^\/api\/properties\/([A-Za-z0-9_-]{1,64})$/);
@@ -693,8 +1008,17 @@ async function handleApi(req, env, url, u) {
       const body = await req.json();
       body.id = id;
       const doc = JSON.stringify(body);
-      if (doc.length > 200000) return json({ error: '내용이 너무 깁니다' }, 413);
-      await env.DB.prepare(UPSERT_PROP).bind(bk, id, doc, nowIso(), uk).run();
+      if (doc.length > MAX_PROP_LEN) return json({ error: '내용이 너무 깁니다' }, 413);
+
+      /* 고쳐 쓰는 건 언제나 되고, 새로 늘리는 것만 상한에 걸립니다. */
+      const c = await env.DB.prepare(
+        'SELECT COUNT(*) AS n, MAX(CASE WHEN id = ? THEN 1 ELSE 0 END) AS mine ' +
+        'FROM properties WHERE book_id = ?').bind(id, bk).first();
+      if (!Number(c.mine) && Number(c.n) >= MAX_PROPS) {
+        return json({ error: '한 장부에는 매물 ' + MAX_PROPS + '곳까지 담을 수 있습니다' }, 409);
+      }
+
+      await env.DB.prepare(UPSERT_PROP).bind(bk, id, doc, nowIso(), uk, uk).run();
       return json({ ok: true });
     }
     if (method === 'DELETE') {
@@ -844,7 +1168,7 @@ async function handleAdmin(req, env, url, u) {
 
   if (path === '/api/admin/overview' && method === 'GET') {
     const users = await env.DB.prepare(
-      'SELECT u.email, u.name, u.created_at, u.last_login, ' +
+      'SELECT u.email, u.name, u.created_at, u.last_login, u.provider, u.age_band, ' +
       '(SELECT COUNT(*) FROM book_members m WHERE m.user_key = u.email) AS books, ' +
       '(SELECT COUNT(*) FROM books b WHERE b.owner_key = u.email) AS owned, ' +
       "(SELECT la.until FROM login_attempts la WHERE la.key = 'e:' || u.email) AS locked " +
@@ -868,6 +1192,41 @@ async function handleAdmin(req, env, url, u) {
       liveInvites: Number(invites.n) || 0,
       signupOpen: !!env.SIGNUP_CODE,
       photoStore: env.PHOTOS ? 'r2' : 'db'
+    });
+  }
+
+  /* 연령대별로 어떤 집을 보고 있는지. 금액은 만원, 면적은 m² 입니다.
+   * 집계는 v_prop_stats 뷰 하나만 봅니다(migrations/004-stats.sql).
+   */
+  if (path === '/api/admin/stats' && method === 'GET') {
+    const byAge = await env.DB.prepare(
+      'SELECT COALESCE(age_band, ?) AS age_band, deal_type, COUNT(*) AS n, ' +
+      'ROUND(AVG(price)) AS avg_price, MIN(price) AS min_price, MAX(price) AS max_price, ' +
+      'ROUND(AVG(pyeong), 1) AS avg_pyeong, ROUND(AVG(per_pyeong)) AS avg_per_pyeong ' +
+      'FROM v_prop_stats WHERE price IS NOT NULL AND deal_type IS NOT NULL ' +
+      'GROUP BY COALESCE(age_band, ?), deal_type ORDER BY 1, 2'
+    ).bind('unknown', 'unknown').all();
+
+    const people = await env.DB.prepare(
+      'SELECT COALESCE(age_band, ?) AS age_band, COUNT(*) AS n FROM users ' +
+      'GROUP BY COALESCE(age_band, ?) ORDER BY 1'
+    ).bind('unknown', 'unknown').all();
+
+    const providers = await env.DB.prepare(
+      'SELECT provider, COUNT(*) AS n FROM users GROUP BY provider ORDER BY 2 DESC'
+    ).all();
+
+    const totals = await env.DB.prepare(
+      'SELECT deal_type, COUNT(*) AS n, ROUND(AVG(price)) AS avg_price, ' +
+      'ROUND(AVG(per_pyeong)) AS avg_per_pyeong FROM v_prop_stats ' +
+      'WHERE price IS NOT NULL AND deal_type IS NOT NULL GROUP BY deal_type ORDER BY 1'
+    ).all();
+
+    return json({
+      byAge: byAge.results || [],
+      people: people.results || [],
+      providers: providers.results || [],
+      totals: totals.results || []
     });
   }
 
@@ -955,8 +1314,9 @@ async function members(env, bk) {
   }));
 }
 
+/* created_by 는 처음 넣은 사람 그대로 둡니다. 남이 고쳤다고 통계의 주인이 바뀌면 안 됩니다. */
 const UPSERT_PROP =
-  'INSERT INTO properties (book_id, id, data, updated_at, updated_by) VALUES (?, ?, ?, ?, ?) ' +
+  'INSERT INTO properties (book_id, id, data, updated_at, updated_by, created_by) VALUES (?, ?, ?, ?, ?, ?) ' +
   'ON CONFLICT(book_id, id) DO UPDATE SET data = excluded.data, ' +
   'updated_at = excluded.updated_at, updated_by = excluded.updated_by';
 

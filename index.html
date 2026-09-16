@@ -440,6 +440,7 @@ const STATUS = [
   {k:'dropped',   l:'탈락'}
 ];
 const DEAL = [{k:'jeonse',l:'전세'},{k:'sale',l:'매매'}];
+const AGE_LABEL = {'10s':'10대','20s':'20대','30s':'30대','40s':'40대','50s':'50대','60s':'60대 이상'};
 const FACING = ['남','남동','남서','동','서','북동','북서','북'];
 const PYEONG = 3.305785;
 
@@ -725,7 +726,7 @@ const LS_P='househunt.props.v1', LS_S='househunt.settings.v1', LS_X='househunt.s
 const state = {
   props:{}, settings:JSON.parse(JSON.stringify(DEFAULT_SETTINGS)),
   view:'table', sort:{key:'score',dir:'desc'}, picks:[], editing:null, draft:null, loading:true,
-  book:null, books:[], members:[], admin:null, isAdmin:false,
+  book:null, books:[], members:[], admin:null, adminStats:null, isAdmin:false,
   samplesOff: (function(){ try{return localStorage.getItem(LS_X)==='1';}catch(e){return false;} })(),
   cmpSame:false
 };
@@ -1651,6 +1652,8 @@ function renderAdmin(){
     return isNaN(d)?'—':(d.getFullYear()+'.'+pad(d.getMonth()+1)+'.'+pad(d.getDate())); };
   const kb=n=>!n?'—':(n<1048576?Math.round(n/1024)+'KB':(n/1048576).toFixed(1)+'MB');
   const bookOf=e=>a.books.filter(b=>b.owner_key===e).map(b=>b.name).join(', ')||'—';
+  const ageName=k=>AGE_LABEL[k]||'안 밝힘';
+  const wayName=k=>({password:'비밀번호',google:'구글',both:'둘 다'})[k]||'비밀번호';
 
   const users=a.users.map(u=>{
     const locked = u.locked && Number(u.locked)>Date.now();
@@ -1659,6 +1662,8 @@ function renderAdmin(){
         '<div class="namebox"><div class="nm">'+esc(u.name||u.email.split("@")[0])+
           (u.email===a.me?' <span class="sub">(나)</span>':'')+'</div>'+
           '<div class="ad">'+esc(u.email)+'</div></div></div></td>'+
+      '<td class="sub">'+esc(wayName(u.provider))+'</td>'+
+      '<td class="sub">'+esc(ageName(u.age_band))+'</td>'+
       '<td class="num">'+u.books+'</td>'+
       '<td>'+esc(bookOf(u.email))+'</td>'+
       '<td class="sub">'+when(u.created_at)+'</td>'+
@@ -1685,6 +1690,45 @@ function renderAdmin(){
   const totalProps=a.books.reduce((x,b)=>x+b.props,0);
   const totalBytes=a.books.reduce((x,b)=>x+(b.bytes||0),0);
 
+  /* ── 연령대별로 어떤 집을 보고 있나 ── */
+  const S=state.adminStats;
+  const dealName=k=>labelOf(DEAL,k,k);
+  let statsPanel='';
+  if(S){
+    const ageRows=(S.byAge||[]).map(r=>'<tr>'+
+      '<td>'+esc(ageName(r.age_band))+'</td>'+
+      '<td>'+esc(dealName(r.deal_type))+'</td>'+
+      '<td class="num">'+r.n+'</td>'+
+      '<td class="num">'+fmtMan(r.avg_price)+'</td>'+
+      '<td class="num sub">'+fmtMan(r.min_price)+' ~ '+fmtMan(r.max_price)+'</td>'+
+      '<td class="num">'+fmtNum(r.avg_pyeong,1)+'평</td>'+
+      '<td class="num">'+fmtMan(r.avg_per_pyeong)+'</td>'+
+    '</tr>').join('');
+
+    const people=(S.people||[]).map(r=>
+      '<span class="pill">'+esc(ageName(r.age_band))+' '+r.n+'명</span>').join(' ');
+    const ways=(S.providers||[]).map(r=>
+      '<span class="pill">'+esc(wayName(r.provider))+' '+r.n+'명</span>').join(' ');
+    const totals=(S.totals||[]).map(r=>
+      '<div class="stat"><div class="k">'+esc(dealName(r.deal_type))+' 평균</div><div class="v">'+
+      fmtMan(r.avg_price)+'</div></div>').join('');
+
+    statsPanel='<div class="panel"><h2>연령대별 통계</h2>'+
+      '<p class="desc">매물을 <b>처음 넣은 사람</b>의 연령대로 셉니다. 남이 고쳐도 주인은 바뀌지 않습니다. '+
+      '연령대를 안 밝힌 사람은 "안 밝힘"으로 따로 셉니다. 금액은 만원이 아니라 억·만으로 적었고, '+
+      '평당가는 전용 면적 기준입니다. 표본이 적을 때는 평균이 크게 흔들리니 건수를 같이 보세요.</p>'+
+      (totals?'<div class="strip">'+totals+'</div>':'')+
+      '<p class="desc" style="margin-top:14px"><b>회원 연령대</b> '+(people||'—')+'</p>'+
+      '<p class="desc"><b>가입 방식</b> '+(ways||'—')+'</p>'+
+      (ageRows
+        ? '<div class="tablewrap"><table class="grid" style="min-width:720px"><thead><tr>'+
+            '<th>연령대</th><th>거래</th><th class="num">건수</th><th class="num">평균가</th>'+
+            '<th class="num">최저 ~ 최고</th><th class="num">평균 넓이</th><th class="num">평당가</th>'+
+          '</tr></thead><tbody>'+ageRows+'</tbody></table></div>'
+        : '<p class="desc">아직 값이 적힌 매물이 없어 낼 통계가 없습니다.</p>')+
+    '</div>';
+  }
+
   return '<div class="strip" style="margin-top:0">'+
       '<div class="stat"><div class="k">회원</div><div class="v">'+a.users.length+' <small>명</small></div></div>'+
       '<div class="stat"><div class="k">장부</div><div class="v">'+a.books.length+' <small>개</small></div></div>'+
@@ -1694,10 +1738,11 @@ function renderAdmin(){
     '</div>'+
     '<div class="panel"><h2>회원</h2>'+
       '<p class="desc">가입 창구는 지금 '+(a.signupOpen?'<b>열려 있습니다</b>. 가입 코드를 아는 사람은 자기 장부를 새로 만들 수 있습니다':'<b>닫혀 있습니다</b>. 초대 링크로만 들어올 수 있습니다')+'. 이 설정은 wrangler secret 으로 바꿉니다.</p>'+
-      '<div class="tablewrap"><table class="grid" style="min-width:840px"><thead><tr>'+
-        '<th class="c-main">회원</th><th class="num">장부</th><th>주인인 장부</th>'+
+      '<div class="tablewrap"><table class="grid" style="min-width:960px"><thead><tr>'+
+        '<th class="c-main">회원</th><th>가입 방식</th><th>연령대</th><th class="num">장부</th><th>주인인 장부</th>'+
         '<th>가입</th><th>마지막 로그인</th><th>상태</th><th>할 일</th>'+
       '</tr></thead><tbody>'+users+'</tbody></table></div></div>'+
+    statsPanel+
     '<div class="panel"><h2>백업</h2>'+
       '<p class="desc">데이터는 Cloudflare D1 한 곳에 있고 사진도 거기 같이 들어 있습니다. 세 겹으로 받쳐둡니다.</p>'+
       '<div class="steps">'+
@@ -1723,7 +1768,13 @@ function renderAdmin(){
 function pad(n){ return n<10?'0'+n:''+n; }
 
 async function loadAdmin(){
-  try{ state.admin=await store.call('GET','/api/admin/overview'); }
+  try{
+    const [ov,st]=await Promise.all([
+      store.call('GET','/api/admin/overview'),
+      store.call('GET','/api/admin/stats').catch(()=>null)
+    ]);
+    state.admin=ov; state.adminStats=st;
+  }
   catch(e){ state.admin=null; toast(e.message); }
   if(state.view==='admin') render();
 }

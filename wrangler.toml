@@ -2,6 +2,12 @@ name = "house-hunt"
 main = "src/worker.js"
 compatibility_date = "2025-01-01"
 
+# 붙일 주소. myoung.world 가 이 계정의 Cloudflare 존에 있어야 하고,
+# 배포하면 DNS 레코드와 인증서는 Cloudflare 가 알아서 만듭니다.
+routes = [
+  { pattern = "house.myoung.world", custom_domain = true }
+]
+
 # index.html을 문자열로 번들에 넣어 워커가 직접 서빙합니다.
 rules = [{ type = "Text", globs = ["**/*.html"], fallthrough = true }]
 
