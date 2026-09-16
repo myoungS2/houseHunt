@@ -349,16 +349,14 @@ async function handleAuth(req, env, url) {
     const allow = (env.ALLOWED_EMAILS || '').split(',').map(s => s.trim().toLowerCase()).filter(Boolean);
     if (allow.length && allow.indexOf(email) < 0) return back('이 이메일은 초대 목록에 없습니다');
 
-    /* 새 계정은 초대를 받은 사람에게만 열립니다. 구글 버튼을 누를 때 초대 주소를
-       같이 실어 보냈고(st.next), 그게 아직 살아 있는 초대인지 여기서 확인합니다.
-       이미 있는 계정의 로그인은 이 검사를 거치지 않습니다. */
+    /* 구글로는 초대 없이도 시작할 수 있습니다. 구글이 이미 사람을 한 번 걸러 주고,
+       계정마다 자기 장부가 따로 생기므로 남의 장부가 보이지는 않습니다.
+       한 곳에서 계정을 무더기로 찍어내는 것만 아이피로 막습니다.
+       (이메일·비밀번호 가입은 초대 링크가 있어야 합니다 — /auth/signup) */
     const ipKey = 's:' + clientIp(req);
-    const invitedTo = await inviteOk(env, st.next);
     const gate = (await rateBlocked(env, ipKey))
       ? { ok: false, why: '가입 시도가 너무 많습니다. 잠시 뒤에 다시 해주세요' }
-      : invitedTo
-        ? { ok: true }
-        : { ok: false, why: '초대를 받은 분만 새로 시작할 수 있습니다. 함께 쓸 분에게 초대 링크를 받아 주세요' };
+      : { ok: true };
 
     const r = await linkGoogleUser(env, email, String(claims.sub || ''), claims.name, gate);
     if (r.error) return back(r.error);
@@ -391,7 +389,7 @@ async function handleAuth(req, env, url) {
     const invitedTo = await inviteOk(env, nx);
     /* 초대도 없고 가입 코드도 꺼져 있으면 새로 시작할 길이 없습니다.
        빈 폼을 보여주고 다 채운 뒤에 막기보다, 먼저 알려 줍니다. */
-    if (!invitedTo && !env.SIGNUP_CODE) return inviteOnlyPage();
+    if (!invitedTo && !env.SIGNUP_CODE) return inviteOnlyPage(googleOn(env));
     return authPage('signup', null, nx, invitedTo,
       url.searchParams.get('code') || '', googleOn(env));
   }
@@ -723,20 +721,24 @@ const GOOGLE_MARK = '<svg class="g" viewBox="0 0 48 48" width="18" height="18" a
   '<path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z"/>' +
   '<path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.15 1.45-4.92 2.3-8.16 2.3-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"/></svg>';
 
-/* 초대 없이 가입 화면에 들어온 사람에게 보여 줍니다. */
-function inviteOnlyPage() {
+/* 초대 없이 가입 화면에 들어온 사람에게 보여 줍니다.
+   구글로는 그냥 시작할 수 있으므로 그 길은 열어 둡니다. */
+function inviteOnlyPage(google) {
   const nonce = b64(crypto.getRandomValues(new Uint8Array(16)));
   const html = '<!doctype html><html lang="ko"><head><meta charset="utf-8">' +
     '<meta name="viewport" content="width=device-width,initial-scale=1">' +
-    '<meta name="color-scheme" content="light dark"><title>초대가 필요합니다 · 하우스헌팅</title>' +
+    '<meta name="color-scheme" content="light dark"><title>시작하기 · 하우스헌팅</title>' +
     '<link rel="preconnect" href="https://fonts.googleapis.com">' +
     '<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>' +
     '<link href="https://fonts.googleapis.com/css2?family=Jua&family=IBM+Plex+Sans+KR:wght@400;500;600&display=swap" rel="stylesheet">' +
     '<style nonce="' + nonce + '">' + AUTH_CSS + '</style></head><body>' +
     '<main class="card">' + SCENE_SVG +
-      '<h1>하우스헌팅</h1><p class="lead">초대가 필요합니다</p>' +
-      '<p class="who">함께 쓸 분에게 초대 링크를 받아, 그 링크로 들어와 주세요. ' +
-        '링크를 받으면 구글 계정으로도 바로 시작할 수 있습니다.</p>' +
+      '<h1>하우스헌팅</h1><p class="lead">시작하기</p>' +
+      (google
+        ? '<a class="gbtn" href="/auth/google">' + GOOGLE_MARK + '구글로 계속하기</a>' +
+          '<div class="or"><span>또는 이메일로</span></div>'
+        : '') +
+      '<p class="who">이메일과 비밀번호로 시작하려면 초대 링크가 필요합니다.</p>' +
       '<p class="alt">이미 계정이 있나요? <a href="/auth/login">로그인</a></p>' +
       '<p class="fine"><a href="/privacy">개인정보처리방침</a> · <a href="/terms">서비스 약관</a></p>' +
     '</main></body></html>';
