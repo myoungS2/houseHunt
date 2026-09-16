@@ -346,11 +346,18 @@ async function handleAuth(req, env, url) {
     const allow = (env.ALLOWED_EMAILS || '').split(',').map(s => s.trim().toLowerCase()).filter(Boolean);
     if (allow.length && allow.indexOf(email) < 0) return back('이 이메일은 초대 목록에 없습니다');
 
-    /* 한 곳에서 계정을 무더기로 찍어내는 것만 막습니다. 이미 있는 계정의 로그인은
-       막지 않으므로, 같은 사무실에서 여럿이 들어와도 아무 일 없습니다. */
+    /* 새 계정은 초대를 받은 사람에게만 열립니다. 구글 버튼을 누를 때 초대 주소를
+       같이 실어 보냈고(st.next), 그게 아직 살아 있는 초대인지 여기서 확인합니다.
+       이미 있는 계정의 로그인은 이 검사를 거치지 않습니다. */
     const ipKey = 's:' + clientIp(req);
-    const blocked = await rateBlocked(env, ipKey);
-    const r = await linkGoogleUser(env, email, String(claims.sub || ''), claims.name, !blocked);
+    const invitedTo = await inviteOk(env, st.next);
+    const gate = (await rateBlocked(env, ipKey))
+      ? { ok: false, why: '가입 시도가 너무 많습니다. 잠시 뒤에 다시 해주세요' }
+      : invitedTo
+        ? { ok: true }
+        : { ok: false, why: '초대를 받은 분만 새로 시작할 수 있습니다. 함께 쓸 분에게 초대 링크를 받아 주세요' };
+
+    const r = await linkGoogleUser(env, email, String(claims.sub || ''), claims.name, gate);
     if (r.error) return back(r.error);
     if (r.created) await rateFail(env, ipKey, SIGNUP_WINDOW_MS, SIGNUP_MAX, SIGNUP_WINDOW_MS);
 
@@ -378,7 +385,11 @@ async function handleAuth(req, env, url) {
 
   if (path === '/auth/signup' && req.method === 'GET') {
     const nx = safeNext(url.searchParams.get('next'));
-    return authPage('signup', null, nx, await inviteOk(env, nx),
+    const invitedTo = await inviteOk(env, nx);
+    /* 초대도 없고 가입 코드도 꺼져 있으면 새로 시작할 길이 없습니다.
+       빈 폼을 보여주고 다 채운 뒤에 막기보다, 먼저 알려 줍니다. */
+    if (!invitedTo && !env.SIGNUP_CODE) return inviteOnlyPage();
+    return authPage('signup', null, nx, invitedTo,
       url.searchParams.get('code') || '', googleOn(env));
   }
 
@@ -575,7 +586,7 @@ async function googleClaims(env, url, code, st) {
  * 사람을 알아보는 기준은 이메일이 아니라 구글이 주는 sub 입니다. 구글에서 이메일을
  * 바꿔도 같은 사람으로 남고, 남이 그 이메일을 새로 받아도 남의 장부로는 못 들어갑니다.
  */
-async function linkGoogleUser(env, email, sub, name, allowCreate) {
+async function linkGoogleUser(env, email, sub, name, gate) {
   if (!sub) return { error: '구글 계정을 알아보지 못했습니다' };
   const at = nowIso();
 
@@ -598,7 +609,8 @@ async function linkGoogleUser(env, email, sub, name, allowCreate) {
     return { email: byEmail.email, epoch: Number(byEmail.session_epoch), created: false };
   }
 
-  if (!allowCreate) return { error: '가입 시도가 너무 많습니다. 잠시 뒤에 다시 해주세요' };
+  /* 여기까지 왔으면 처음 보는 사람입니다. 만들어도 되는지는 부르는 쪽이 정합니다. */
+  if (!gate || !gate.ok) return { error: (gate && gate.why) || '지금은 새로 시작할 수 없습니다' };
 
   const nm = String(name || '').trim().slice(0, 40) || email.split('@')[0];
   try {
@@ -650,7 +662,7 @@ function authPage(kind, email, next, invitedTo, codeHint, google, notice) {
 
   const q = next && next !== '/' ? '?next=' + encodeURIComponent(next) : '';
   const foot =
-    kind === 'login'  ? '<p class="alt">처음이신가요? <a href="/auth/signup' + q + '">가입 코드로 시작하기</a></p>' :
+    kind === 'login'  ? '<p class="alt">처음이신가요? <a href="/auth/signup' + q + '">시작하기</a></p>' :
     kind === 'signup' ? '<p class="alt">이미 계정이 있나요? <a href="/auth/login' + q + '">로그인</a></p>' :
                         '<p class="alt"><a href="/">장부로 돌아가기</a></p>';
 
@@ -707,6 +719,33 @@ const GOOGLE_MARK = '<svg class="g" viewBox="0 0 48 48" width="18" height="18" a
   '<path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"/>' +
   '<path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z"/>' +
   '<path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.15 1.45-4.92 2.3-8.16 2.3-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"/></svg>';
+
+/* 초대 없이 가입 화면에 들어온 사람에게 보여 줍니다. */
+function inviteOnlyPage() {
+  const nonce = b64(crypto.getRandomValues(new Uint8Array(16)));
+  const html = '<!doctype html><html lang="ko"><head><meta charset="utf-8">' +
+    '<meta name="viewport" content="width=device-width,initial-scale=1">' +
+    '<meta name="color-scheme" content="light dark"><title>초대가 필요합니다 · 하우스헌팅</title>' +
+    '<link rel="preconnect" href="https://fonts.googleapis.com">' +
+    '<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>' +
+    '<link href="https://fonts.googleapis.com/css2?family=Jua&family=IBM+Plex+Sans+KR:wght@400;500;600&display=swap" rel="stylesheet">' +
+    '<style nonce="' + nonce + '">' + AUTH_CSS + '</style></head><body>' +
+    '<main class="card">' + SCENE_SVG +
+      '<h1>하우스헌팅</h1><p class="lead">초대가 필요합니다</p>' +
+      '<p class="who">함께 쓸 분에게 초대 링크를 받아, 그 링크로 들어와 주세요. ' +
+        '링크를 받으면 구글 계정으로도 바로 시작할 수 있습니다.</p>' +
+      '<p class="alt">이미 계정이 있나요? <a href="/auth/login">로그인</a></p>' +
+      '<p class="fine"><a href="/privacy">개인정보처리방침</a> · <a href="/terms">서비스 약관</a></p>' +
+    '</main></body></html>';
+
+  return new Response(html, {
+    headers: Object.assign(baseHeaders(), {
+      'content-type': 'text/html; charset=utf-8',
+      'cache-control': 'no-store',
+      'content-security-policy': csp(nonce)
+    })
+  });
+}
 
 /* 구글로 막 들어온 사람에게 연령대만 한 번 묻습니다. 건너뛰어도 그만입니다. */
 function agePage(next) {
@@ -1083,6 +1122,20 @@ function authScript(kind, postPath, next) {
 /* ═══ 초대 링크로 합류 ══════════════════════ */
 /* next 가 살아 있는 초대 링크면 그 장부 이름을 돌려준다.
  * 초대를 받아 들어오는 사람에게는 가입 코드를 따로 묻지 않는다. */
+/* 아직 쓰지 않았고 기한도 남은 초대 링크들 */
+async function liveInvites(env, bk, origin) {
+  const r = await env.DB.prepare(
+    'SELECT token, created_at, expires_at FROM book_invites ' +
+    'WHERE book_id = ? AND used_at IS NULL AND expires_at > ? ORDER BY created_at'
+  ).bind(bk, Date.now()).all();
+  return (r.results || []).map(x => ({
+    token: x.token,
+    url: origin + '/join/' + x.token,
+    createdAt: x.created_at,
+    expiresAt: Number(x.expires_at)
+  }));
+}
+
 async function inviteOk(env, next) {
   const m = String(next || '').match(/^\/join\/([A-Za-z0-9_-]{20,64})$/);
   if (!m) return null;
@@ -1182,7 +1235,8 @@ async function handleApi(req, env, url, u) {
       properties: (props.results || []).map(r => safeParse(r.data)).filter(Boolean),
       settings: st ? safeParse(st.data) : null,
       book: u.book,
-      members: await members(env, bk)
+      members: await members(env, bk),
+      invites: u.book.role === 'owner' ? await liveInvites(env, bk, url.origin) : []
     });
   }
 
@@ -1262,26 +1316,52 @@ async function handleApi(req, env, url, u) {
     return json({ ok: true });
   }
 
+  /* 부를 사람마다 링크를 하나씩 만들어 따로 보냅니다. 먼저 보낸 링크는 죽지 않습니다. */
   if (path === '/api/book/invite' && method === 'POST') {
     if (u.book.role !== 'owner') return json({ error: '장부 주인만 초대할 수 있습니다' }, 403);
-    const count = await env.DB.prepare(
+    const people = await env.DB.prepare(
       'SELECT COUNT(*) AS n FROM book_members WHERE book_id = ?').bind(bk).first();
-    if (Number(count.n) >= MAX_MEMBERS) {
+    const room = MAX_MEMBERS - Number(people.n);
+    if (room <= 0) {
       return json({ error: '한 장부에는 ' + MAX_MEMBERS + '명까지 들어올 수 있습니다' }, 409);
     }
-    await env.DB.prepare('DELETE FROM book_invites WHERE book_id = ? AND used_at IS NULL').bind(bk).run();
+
+    /* 살아 있는 링크는 남은 자리 수만큼만. 링크를 뿌려만 두는 일을 막습니다. */
+    const live = await env.DB.prepare(
+      'SELECT COUNT(*) AS n FROM book_invites WHERE book_id = ? AND used_at IS NULL AND expires_at > ?'
+    ).bind(bk, Date.now()).first();
+    if (Number(live.n) >= room) {
+      return json({
+        error: '남은 자리 ' + room + '명만큼만 링크를 둘 수 있습니다. 안 쓰는 링크를 먼저 끄세요'
+      }, 409);
+    }
+
     const token = b64(crypto.getRandomValues(new Uint8Array(24)));
     const expires = Date.now() + INVITE_DAYS * 864e5;
     await env.DB.prepare(
       'INSERT INTO book_invites (token, book_id, created_by, created_at, expires_at) VALUES (?,?,?,?,?)'
     ).bind(token, bk, uk, nowIso(), expires).run();
-    return json({ ok: true, url: url.origin + '/join/' + token, expiresAt: expires, days: INVITE_DAYS });
+    return json({
+      ok: true, url: url.origin + '/join/' + token, expiresAt: expires, days: INVITE_DAYS,
+      invites: await liveInvites(env, bk, url.origin)
+    });
   }
 
+  /* 링크 하나만 끄기 */
+  const oneInvite = path.match(/^\/api\/book\/invite\/([A-Za-z0-9_-]{20,64})$/);
+  if (oneInvite && method === 'DELETE') {
+    if (u.book.role !== 'owner') return json({ error: '장부 주인만 끌 수 있습니다' }, 403);
+    await env.DB.prepare(
+      'DELETE FROM book_invites WHERE book_id = ? AND token = ? AND used_at IS NULL'
+    ).bind(bk, oneInvite[1]).run();
+    return json({ ok: true, invites: await liveInvites(env, bk, url.origin) });
+  }
+
+  /* 살아 있는 링크 모두 끄기 */
   if (path === '/api/book/invite' && method === 'DELETE') {
     if (u.book.role !== 'owner') return json({ error: '장부 주인만 끌 수 있습니다' }, 403);
     await env.DB.prepare('DELETE FROM book_invites WHERE book_id = ? AND used_at IS NULL').bind(bk).run();
-    return json({ ok: true });
+    return json({ ok: true, invites: [] });
   }
 
   if (path === '/api/book/leave' && method === 'POST') {

@@ -726,7 +726,7 @@ const LS_P='househunt.props.v1', LS_S='househunt.settings.v1', LS_X='househunt.s
 const state = {
   props:{}, settings:JSON.parse(JSON.stringify(DEFAULT_SETTINGS)),
   view:'table', sort:{key:'score',dir:'desc'}, picks:[], editing:null, draft:null, loading:true,
-  book:null, books:[], members:[], admin:null, adminStats:null, isAdmin:false,
+  book:null, books:[], members:[], invites:[], admin:null, adminStats:null, isAdmin:false,
   samplesOff: (function(){ try{return localStorage.getItem(LS_X)==='1';}catch(e){return false;} })(),
   cmpSame:false
 };
@@ -804,6 +804,7 @@ const store = {
     if(j.settings) state.settings=mergeSettings(j.settings);
     if(j.book) state.book=j.book;
     if(j.members) state.members=j.members;
+    state.invites = j.invites||[];
   },
   async call(method,path,body){
     const opt={method,credentials:'same-origin',headers:{}};
@@ -1835,12 +1836,29 @@ function sharePanel(){
     '<div class="field" style="max-width:280px;margin-bottom:16px"><label for="bookName">장부 이름</label>'+
       '<input type="text" id="bookName" value="'+esc(state.book.name)+'"'+(store.mode==='api'?'':' disabled')+'></div>'+
     list+
-    '<div id="inviteBox" style="margin-top:16px">'+
-      (state.book.role==='owner'
-        ? '<button class="btn primary sm" id="makeInvite">초대 링크 만들기</button>'+
-          '<span class="hint" style="margin-left:9px">링크를 받은 사람은 '+7+'일 안에 한 번 들어올 수 있습니다</span>'
-        : '<button class="btn sm" id="leaveBook">이 장부에서 나가기</button>')+
-    '</div></div>';
+    '<div id="inviteBox" style="margin-top:16px">'+ inviteUI(owner) +'</div></div>';
+}
+
+/* 초대 링크는 부를 사람 수만큼 따로 만들어 둡니다. 먼저 보낸 링크는 죽지 않습니다. */
+function inviteUI(owner){
+  if(!owner) return '<button class="btn sm" id="leaveBook">이 장부에서 나가기</button>';
+
+  const list = (state.invites||[]);
+  const rows = list.map(v=>
+    '<div class="inviteOut">'+
+      '<input type="text" readonly value="'+esc(v.url)+'" data-iurl="'+esc(v.token)+'">'+
+      '<button class="btn sm primary" data-copyinvite="'+esc(v.token)+'">복사</button>'+
+      '<button class="btn sm ghost" data-killone="'+esc(v.token)+'">끄기</button>'+
+    '</div>').join('');
+
+  return '<p class="desc" style="margin:0 0 9px"><b>초대 링크</b> — 부를 사람마다 하나씩 만들어 '+
+      '따로 보내세요. 받은 사람은 7일 안에 한 번 쓸 수 있고, 구글 계정으로도 바로 들어옵니다. '+
+      '<b>초대 없이는 아무도 새로 시작할 수 없습니다.</b></p>'+
+    (rows || '<p class="hint" style="margin:0 0 4px">아직 만들어 둔 링크가 없습니다.</p>')+
+    '<div style="margin-top:11px">'+
+      '<button class="btn primary sm" id="makeInvite">초대 링크 만들기</button>'+
+      (list.length>1?' <button class="btn sm ghost" id="killInvite">모두 끄기</button>':'')+
+    '</div>';
 }
 
 /* ═══ 입력 폼 ════════════════════════════════ */
@@ -2331,7 +2349,7 @@ document.addEventListener('paste', e=>{
   setTimeout(nvApply, 0);
 });
 document.addEventListener('click', e=>{
-  const t=e.target.closest('[data-view],[data-sort],[data-order],[data-edit],[data-move],[data-zoom],[data-go],[data-star],[data-rweight],[data-rdel],[data-rmphoto],[data-logout],[data-add],[data-kick],[data-unlock],[data-forcelogout],[data-deluser],[data-delbook],button');
+  const t=e.target.closest('[data-view],[data-sort],[data-order],[data-edit],[data-move],[data-zoom],[data-go],[data-star],[data-rweight],[data-rdel],[data-rmphoto],[data-logout],[data-add],[data-kick],[data-unlock],[data-forcelogout],[data-deluser],[data-delbook],[data-copyinvite],[data-killone],button');
   if(!t) return;
 
   if(t.dataset.view){ setView(t.dataset.view); return; }
@@ -2363,6 +2381,19 @@ document.addEventListener('click', e=>{
     if(!arm(t,'"'+(t.dataset.bookname||'')+'"를 통째로 지울까요?','삭제')) return;
     store.call('DELETE','/api/admin/books/'+encodeURIComponent(t.dataset.delbook))
       .then(()=>{ toast('장부를 지웠습니다'); return loadAdmin(); }).catch(e=>toast(e.message));
+    return;
+  }
+  if(t.dataset.copyinvite){
+    const f=document.querySelector('[data-iurl="'+t.dataset.copyinvite+'"]');
+    if(f && navigator.clipboard && navigator.clipboard.writeText){
+      navigator.clipboard.writeText(f.value).then(()=>toast('초대 링크를 복사했습니다')).catch(()=>toast('복사가 막혀 있습니다'));
+    } else if(f){ f.focus(); f.select(); toast('길게 눌러 복사해 주세요'); }
+    return;
+  }
+  if(t.dataset.killone){
+    store.call('DELETE','/api/book/invite/'+encodeURIComponent(t.dataset.killone))
+      .then(j=>{ state.invites=j.invites||[]; toast('링크를 껐습니다'); render(); })
+      .catch(e=>toast(e.message));
     return;
   }
   if(t.dataset.kick){
@@ -2428,24 +2459,19 @@ document.addEventListener('click', e=>{
     case 'makeInvite': {
       t.disabled=true; t.textContent='만드는 중…';
       store.call('POST','/api/book/invite',{}).then(j=>{
-        $('#inviteBox').innerHTML =
-          '<p class="desc" style="margin:0 0 4px">아래 링크를 같이 쓸 사람에게 보내세요. '+j.days+'일 안에 한 번만 쓸 수 있습니다.</p>'+
-          '<div class="inviteOut"><input type="text" id="inviteUrl" readonly value="'+esc(j.url)+'">'+
-          '<button class="btn sm primary" id="copyInvite">복사</button>'+
-          '<button class="btn sm ghost" id="killInvite">링크 끄기</button></div>';
-        const f=$('#inviteUrl'); if(f){ f.focus(); f.select(); }
+        state.invites = j.invites||[];
+        render();
+        const f=$('[data-iurl]:last-of-type')||$('[data-iurl]');
+        if(f){ f.focus(); f.select(); }
+        toast('링크를 만들었습니다. 복사해서 보내세요');
       }).catch(e=>{ toast(e.message); t.disabled=false; t.textContent='초대 링크 만들기'; });
       break;
     }
-    case 'copyInvite': {
-      const f=$('#inviteUrl');
-      if(f && navigator.clipboard && navigator.clipboard.writeText){
-        navigator.clipboard.writeText(f.value).then(()=>toast('초대 링크를 복사했습니다')).catch(()=>toast('복사가 막혀 있습니다'));
-      } else if(f){ f.select(); toast('길게 눌러 복사해 주세요'); }
-      break;
-    }
     case 'killInvite':
-      store.call('DELETE','/api/book/invite').then(()=>{ toast('초대 링크를 껐습니다'); render(); }).catch(e=>toast(e.message));
+      if(!arm(t,'링크를 모두 끌까요?','모두 끄기')) break;
+      store.call('DELETE','/api/book/invite')
+        .then(j=>{ state.invites=j.invites||[]; toast('초대 링크를 모두 껐습니다'); render(); })
+        .catch(e=>toast(e.message));
       break;
     case 'leaveBook': {
       if(!arm(t,'정말 나갈까요?','이 장부에서 나가기')) break;
