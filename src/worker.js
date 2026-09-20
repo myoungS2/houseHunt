@@ -11,6 +11,8 @@
  * DB를 통째로 훔쳐도 원래 비밀번호를 캐려면 한 번 찍을 때마다 61만 번을 돌려야 합니다.
  */
 import APP_HTML from "../index.html";
+import OG_PNG from "../assets/og.png";
+import TOUCH_ICON from "../assets/icon-180.png";
 
 /* ── 설정값 ── */
 const CLIENT_ITER  = 600000;   // 브라우저가 도는 횟수. 로그인 화면 스크립트와 반드시 같아야 합니다.
@@ -53,7 +55,14 @@ export default {
     try {
       /* 약관과 방침은 로그인 없이 누구나 볼 수 있어야 합니다.
          구글도 앱을 게시하기 전에 이 주소들을 확인합니다. */
-      if (path === '/privacy' || path === '/terms') return legalPage(path.slice(1), env);
+      if (path === '/privacy' || path === '/terms') return legalPage(url.origin, path.slice(1), env);
+
+      /* 탭 아이콘과, 주소를 공유했을 때 카드에 실리는 그림. 로그인 전에도 열려야 합니다. */
+      if (path === '/icon.svg' || path === '/favicon.ico') return staticFile(ICON_SVG, 'image/svg+xml; charset=utf-8');
+      if (path === '/og.png') return staticFile(OG_PNG, 'image/png');
+      if (path === '/apple-touch-icon.png' || path === '/apple-touch-icon-precomposed.png') {
+        return staticFile(TOUCH_ICON, 'image/png');
+      }
 
       if (path.startsWith('/auth/')) return await handleAuth(req, env, url);
 
@@ -83,7 +92,7 @@ export default {
       if (path === '/' || path === '/index.html') {
         const u = await currentUser(req, env);
         if (!u) return redirect(url.origin + '/auth/login');
-        return serveApp();
+        return serveApp(url.origin);
       }
       return new Response('찾는 페이지가 없습니다', { status: 404, headers: baseHeaders() });
     } catch (err) {
@@ -92,13 +101,78 @@ export default {
   }
 };
 
+/* ═══ 머리말 ═══════════════════════════════
+ * 탭에 붙는 아이콘과, 주소를 카톡이나 슬랙에 붙였을 때 뜨는 카드를 여기서 답니다.
+ * 카드 그림은 /og.png 한 장을 모든 화면이 같이 씁니다.
+ */
+const FONT_LINKS =
+  '<link rel="preconnect" href="https://fonts.googleapis.com">' +
+  '<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>' +
+  '<link href="https://fonts.googleapis.com/css2?family=Jua&family=IBM+Plex+Sans+KR:wght@400;500;600&display=swap" rel="stylesheet">';
+
+const SITE = '하우스헌팅';
+const SITE_LEAD = '전세 · 매매 후보 비교';
+const SITE_DESC = '전세와 매매 후보를 한곳에 모아 월 환산까지 나란히 견줘 보는 장부';
+
+function pageHead(origin, title, o) {
+  o = o || {};
+  const t = o.title || SITE;
+  const d = o.desc || SITE_DESC;
+  /* 카카오톡은 http 로 걸린 그림을 마다합니다. 로컬이 아니면 https 로 적어 둡니다. */
+  const site = /^http:\/\/(localhost|127\.0\.0\.1)[:/]/.test(origin + '/')
+    ? origin : origin.replace(/^http:/, 'https:');
+  return '<meta charset="utf-8">' +
+    '<meta name="viewport" content="width=device-width,initial-scale=1">' +
+    '<meta name="color-scheme" content="light dark">' +
+    '<meta name="theme-color" media="(prefers-color-scheme: light)" content="#FFFAF0">' +
+    '<meta name="theme-color" media="(prefers-color-scheme: dark)" content="#1C1814">' +
+    (title ? '<title>' + esc(title) + '</title>' : '') +
+    '<meta name="description" content="' + esc(d) + '">' +
+    '<link rel="icon" href="/icon.svg" type="image/svg+xml">' +
+    '<link rel="apple-touch-icon" href="/apple-touch-icon.png">' +
+    /* 카드에 쓰이는 것들. 주소는 절대 주소여야 카카오톡이 그림을 찾아갑니다. */
+    '<meta property="og:type" content="website">' +
+    '<meta property="og:site_name" content="' + SITE + '">' +
+    '<meta property="og:locale" content="ko_KR">' +
+    '<meta property="og:title" content="' + esc(t) + '">' +
+    '<meta property="og:description" content="' + esc(d) + '">' +
+    '<meta property="og:url" content="' + esc(site + (o.path || '/')) + '">' +
+    '<meta property="og:image" content="' + esc(site + '/og.png') + '">' +
+    '<meta property="og:image:type" content="image/png">' +
+    '<meta property="og:image:width" content="1200">' +
+    '<meta property="og:image:height" content="630">' +
+    '<meta property="og:image:alt" content="' + SITE + ' — ' + SITE_LEAD + '">' +
+    '<meta name="twitter:card" content="summary_large_image">';
+}
+
+/* ═══ 아이콘과 카드 그림 ═════════════════════
+ * 탭 아이콘은 앱 왼쪽 위 마크와 같은 그림입니다.
+ */
+const ICON_SVG =
+  '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">' +
+  '<rect width="32" height="32" rx="11" fill="#F2643A"/>' +
+  '<g transform="translate(4 4) scale(1)" fill="none" stroke="#fff" stroke-width="2.6" ' +
+  'stroke-linecap="round" stroke-linejoin="round">' +
+  '<path d="M2.9 11.3 12 3.5l9.1 7.8"/>' +
+  '<path d="M5 10.8V20a.9.9 0 0 0 .9.9h12.2a.9.9 0 0 0 .9-.9v-9.2"/>' +
+  '<path d="M9.9 20.9v-5.3a.9.9 0 0 1 .9-.9h2.4a.9.9 0 0 1 .9.9v5.3"/></g></svg>';
+
+function staticFile(body, type) {
+  return new Response(body, {
+    headers: Object.assign(baseHeaders(), {
+      'content-type': type,
+      'cache-control': 'public, max-age=86400'
+    })
+  });
+}
+
 /* ═══ 앱 서빙 ═══════════════════════════════ */
-function serveApp() {
+function serveApp(origin) {
   const nonce = b64(crypto.getRandomValues(new Uint8Array(16)));
   const body = APP_HTML
     .replace('<style>', '<style nonce="' + nonce + '">')
     .replace('<script>', '<script nonce="' + nonce + '">');
-  return new Response(shell(nonce, body), {
+  return new Response(shell(nonce, body, origin), {
     headers: Object.assign(baseHeaders(), {
       'content-type': 'text/html; charset=utf-8',
       'cache-control': 'no-store',
@@ -106,10 +180,9 @@ function serveApp() {
     })
   });
 }
-function shell(nonce, body) {
-  return '<!doctype html><html lang="ko"><head><meta charset="utf-8">' +
-    '<meta name="viewport" content="width=device-width,initial-scale=1">' +
-    '<meta name="color-scheme" content="light dark">' +
+function shell(nonce, body, origin) {
+  /* 제목은 앱 HTML 안에 이미 들어 있어 여기서는 붙이지 않습니다. */
+  return '<!doctype html><html lang="ko"><head>' + pageHead(origin, '') +
     '<style nonce="' + nonce + '">body{margin:0}img{max-width:100%}[hidden]{display:none!important}</style>' +
     '</head><body>' + body + '</body></html>';
 }
@@ -374,13 +447,13 @@ async function handleAuth(req, env, url) {
   if (path === '/auth/age' && req.method === 'GET') {
     const u = await currentUser(req, env);
     if (!u) return redirect(url.origin + '/auth/login');
-    return agePage(safeNext(url.searchParams.get('next')));
+    return agePage(url.origin, safeNext(url.searchParams.get('next')));
   }
 
   if (path === '/auth/login' && req.method === 'GET') {
     const u = await currentUser(req, env);
     if (u) return redirect(url.origin + '/');
-    return authPage('login', null, safeNext(url.searchParams.get('next')), false, '',
+    return authPage(url.origin, 'login', null, safeNext(url.searchParams.get('next')), false, '',
       googleOn(env), url.searchParams.get('e') || '');
   }
 
@@ -389,15 +462,15 @@ async function handleAuth(req, env, url) {
     const invitedTo = await inviteOk(env, nx);
     /* 초대도 없고 가입 코드도 꺼져 있으면 새로 시작할 길이 없습니다.
        빈 폼을 보여주고 다 채운 뒤에 막기보다, 먼저 알려 줍니다. */
-    if (!invitedTo && !env.SIGNUP_CODE) return inviteOnlyPage(googleOn(env));
-    return authPage('signup', null, nx, invitedTo,
+    if (!invitedTo && !env.SIGNUP_CODE) return inviteOnlyPage(url.origin, googleOn(env));
+    return authPage(url.origin, 'signup', null, nx, invitedTo,
       url.searchParams.get('code') || '', googleOn(env));
   }
 
   if (path === '/auth/password' && req.method === 'GET') {
     const u = await currentUser(req, env);
     if (!u) return redirect(url.origin + '/auth/login');
-    return authPage('password', u.email);
+    return authPage(url.origin, 'password', u.email);
   }
 
   if (req.method !== 'POST') return new Response('없는 경로입니다', { status: 404, headers: baseHeaders() });
@@ -633,7 +706,7 @@ function safeNext(next) {
   return next;
 }
 
-function authPage(kind, email, next, invitedTo, codeHint, google, notice) {
+function authPage(origin, kind, email, next, invitedTo, codeHint, google, notice) {
   const nonce = b64(crypto.getRandomValues(new Uint8Array(16)));
   const T = {
     login:    { title: '하우스헌팅', lead: '로그인', btn: '로그인', path: '/auth/login' },
@@ -673,12 +746,9 @@ function authPage(kind, email, next, invitedTo, codeHint, google, notice) {
       '<div class="or"><span>또는 이메일로</span></div>'
     : '';
 
-  const html = '<!doctype html><html lang="ko"><head><meta charset="utf-8">' +
-    '<meta name="viewport" content="width=device-width,initial-scale=1">' +
-    '<meta name="color-scheme" content="light dark"><title>' + T.lead + ' · 하우스헌팅</title>' +
-    '<link rel="preconnect" href="https://fonts.googleapis.com">' +
-    '<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>' +
-    '<link href="https://fonts.googleapis.com/css2?family=Jua&family=IBM+Plex+Sans+KR:wght@400;500;600&display=swap" rel="stylesheet">' +
+  const html = '<!doctype html><html lang="ko"><head>' +
+    pageHead(origin, T.lead + ' · ' + SITE) +
+    FONT_LINKS +
     '<style nonce="' + nonce + '">' + AUTH_CSS + '</style></head><body>' +
     '<main class="card">' +
       SCENE_SVG +
@@ -723,14 +793,11 @@ const GOOGLE_MARK = '<svg class="g" viewBox="0 0 48 48" width="18" height="18" a
 
 /* 초대 없이 가입 화면에 들어온 사람에게 보여 줍니다.
    구글로는 그냥 시작할 수 있으므로 그 길은 열어 둡니다. */
-function inviteOnlyPage(google) {
+function inviteOnlyPage(origin, google) {
   const nonce = b64(crypto.getRandomValues(new Uint8Array(16)));
-  const html = '<!doctype html><html lang="ko"><head><meta charset="utf-8">' +
-    '<meta name="viewport" content="width=device-width,initial-scale=1">' +
-    '<meta name="color-scheme" content="light dark"><title>시작하기 · 하우스헌팅</title>' +
-    '<link rel="preconnect" href="https://fonts.googleapis.com">' +
-    '<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>' +
-    '<link href="https://fonts.googleapis.com/css2?family=Jua&family=IBM+Plex+Sans+KR:wght@400;500;600&display=swap" rel="stylesheet">' +
+  const html = '<!doctype html><html lang="ko"><head>' +
+    pageHead(origin, '시작하기 · ' + SITE) +
+    FONT_LINKS +
     '<style nonce="' + nonce + '">' + AUTH_CSS + '</style></head><body>' +
     '<main class="card">' + SCENE_SVG +
       '<h1>하우스헌팅</h1><p class="lead">시작하기</p>' +
@@ -753,14 +820,11 @@ function inviteOnlyPage(google) {
 }
 
 /* 구글로 막 들어온 사람에게 연령대만 한 번 묻습니다. 건너뛰어도 그만입니다. */
-function agePage(next) {
+function agePage(origin, next) {
   const nonce = b64(crypto.getRandomValues(new Uint8Array(16)));
-  const html = '<!doctype html><html lang="ko"><head><meta charset="utf-8">' +
-    '<meta name="viewport" content="width=device-width,initial-scale=1">' +
-    '<meta name="color-scheme" content="light dark"><title>시작하기 · 하우스헌팅</title>' +
-    '<link rel="preconnect" href="https://fonts.googleapis.com">' +
-    '<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>' +
-    '<link href="https://fonts.googleapis.com/css2?family=Jua&family=IBM+Plex+Sans+KR:wght@400;500;600&display=swap" rel="stylesheet">' +
+  const html = '<!doctype html><html lang="ko"><head>' +
+    pageHead(origin, '시작하기 · ' + SITE) +
+    FONT_LINKS +
     '<style nonce="' + nonce + '">' + AUTH_CSS + '</style></head><body>' +
     '<main class="card">' + SCENE_SVG +
       '<h1>하우스헌팅</h1><p class="lead">시작하기 전에</p>' +
@@ -788,19 +852,16 @@ function agePage(next) {
 const LEGAL_FROM = '2026년 9월 16일';
 const LEGAL_MAIL = 'mythe1004@gmail.com';
 
-function legalPage(kind, env) {
+function legalPage(origin, kind, env) {
   const nonce = b64(crypto.getRandomValues(new Uint8Array(16)));
   const doc = kind === 'privacy' ? privacyDoc(env) : termsDoc();
   const other = kind === 'privacy'
     ? '<a href="/terms">서비스 약관</a>'
     : '<a href="/privacy">개인정보처리방침</a>';
 
-  const html = '<!doctype html><html lang="ko"><head><meta charset="utf-8">' +
-    '<meta name="viewport" content="width=device-width,initial-scale=1">' +
-    '<meta name="color-scheme" content="light dark"><title>' + doc.title + ' · 하우스헌팅</title>' +
-    '<link rel="preconnect" href="https://fonts.googleapis.com">' +
-    '<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>' +
-    '<link href="https://fonts.googleapis.com/css2?family=Jua&family=IBM+Plex+Sans+KR:wght@400;500;600&display=swap" rel="stylesheet">' +
+  const html = '<!doctype html><html lang="ko"><head>' +
+    pageHead(origin, doc.title + ' · ' + SITE, { title: doc.title + ' · ' + SITE, path: '/' + kind }) +
+    FONT_LINKS +
     '<style nonce="' + nonce + '">' + AUTH_CSS + LEGAL_CSS + '</style></head><body>' +
     '<main class="doc">' +
       '<p class="crumb"><a href="/">하우스헌팅</a></p>' +
@@ -1153,17 +1214,17 @@ async function inviteOk(env, next) {
 
 async function handleJoin(req, env, url) {
   const token = url.pathname.slice('/join/'.length);
-  if (!/^[A-Za-z0-9_-]{20,64}$/.test(token)) return joinPage('없는 초대 링크입니다.', null);
+  if (!/^[A-Za-z0-9_-]{20,64}$/.test(token)) return joinPage(url.origin, '없는 초대 링크입니다.', null);
 
   const inv = await env.DB.prepare(
     'SELECT i.token, i.book_id, i.expires_at, i.used_at, b.name, b.owner_key ' +
     'FROM book_invites i JOIN books b ON b.id = i.book_id WHERE i.token = ?'
   ).bind(token).first();
 
-  if (!inv) return joinPage('없는 초대 링크입니다. 장부 주인에게 새로 받아 주세요.', null);
-  if (inv.used_at) return joinPage('이미 쓴 초대 링크입니다. 장부 주인에게 새로 받아 주세요.', null);
+  if (!inv) return joinPage(url.origin, '없는 초대 링크입니다. 장부 주인에게 새로 받아 주세요.', null);
+  if (inv.used_at) return joinPage(url.origin, '이미 쓴 초대 링크입니다. 장부 주인에게 새로 받아 주세요.', null);
   if (Number(inv.expires_at) < Date.now()) {
-    return joinPage('기한이 지난 초대 링크입니다. 장부 주인에게 새로 받아 주세요.', null);
+    return joinPage(url.origin, '기한이 지난 초대 링크입니다. 장부 주인에게 새로 받아 주세요.', null);
   }
 
   const u = await currentUser(req, env);
@@ -1182,7 +1243,7 @@ async function handleJoin(req, env, url) {
   const count = await env.DB.prepare(
     'SELECT COUNT(*) AS n FROM book_members WHERE book_id = ?').bind(inv.book_id).first();
   if (Number(count.n) >= MAX_MEMBERS) {
-    return joinPage('이 장부는 이미 ' + MAX_MEMBERS + '명이 차 있습니다.', null);
+    return joinPage(url.origin, '이 장부는 이미 ' + MAX_MEMBERS + '명이 차 있습니다.', null);
   }
 
   const at = nowIso();
@@ -1193,10 +1254,10 @@ async function handleJoin(req, env, url) {
       .bind(at, u.key, token),
     env.DB.prepare('UPDATE users SET current_book = ? WHERE email = ?').bind(inv.book_id, u.key)
   ]);
-  return joinPage(null, inv.name);
+  return joinPage(url.origin, null, inv.name);
 }
 
-function joinPage(error, bookName) {
+function joinPage(origin, error, bookName) {
   const nonce = b64(crypto.getRandomValues(new Uint8Array(16)));
   const body = error
     ? '<h1>초대를 쓸 수 없어요</h1><p class="lead">' + esc(error) + '</p>' +
@@ -1204,12 +1265,10 @@ function joinPage(error, bookName) {
     : '<h1>' + esc(bookName) + '에 들어왔어요</h1>' +
       '<p class="lead">이제 이 장부의 집들을 함께 보고 적을 수 있습니다.</p>' +
       '<a class="go" href="/">장부 열기</a>';
-  const html = '<!doctype html><html lang="ko"><head><meta charset="utf-8">' +
-    '<meta name="viewport" content="width=device-width,initial-scale=1">' +
-    '<meta name="color-scheme" content="light dark"><title>초대 · 하우스헌팅</title>' +
-    '<link rel="preconnect" href="https://fonts.googleapis.com">' +
-    '<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>' +
-    '<link href="https://fonts.googleapis.com/css2?family=Jua&family=IBM+Plex+Sans+KR:wght@400;500;600&display=swap" rel="stylesheet">' +
+  const html = '<!doctype html><html lang="ko"><head>' +
+    pageHead(origin, '초대 · ' + SITE,
+      { title: SITE + ' 초대', desc: '이 링크를 열면 장부에 함께 들어갑니다' }) +
+    FONT_LINKS +
     '<style nonce="' + nonce + '">' + AUTH_CSS +
     '.go{display:block;text-align:center;padding:12px;border-radius:999px;background:var(--sun);' +
     'color:var(--sun-ink);font-weight:600;text-decoration:none;margin-top:20px;' +

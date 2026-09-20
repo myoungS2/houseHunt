@@ -9,7 +9,11 @@ routes = [
 ]
 
 # index.html을 문자열로 번들에 넣어 워커가 직접 서빙합니다.
-rules = [{ type = "Text", globs = ["**/*.html"], fallthrough = true }]
+rules = [
+  { type = "Text", globs = ["**/*.html"], fallthrough = true },
+  # 탭 아이콘과 공유 카드 그림. assets/ 의 png 를 번들에 넣어 워커가 그대로 내보냅니다.
+  { type = "Data", globs = ["**/*.png"], fallthrough = true }
+]
 
 [[d1_databases]]
 binding = "DB"

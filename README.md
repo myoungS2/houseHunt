@@ -27,6 +27,7 @@ Cloudflare Worker에 올리면 구글이나 이메일로 로그인하고, 사람
 | 사진 | 됨 (D1에 담김) |
 | R2 사진 저장소 | 안 켬 — 선택 사항 |
 | 매일 백업 | GitHub Actions 로 돎 |
+| 탭 아이콘·공유 카드 | 켜짐 (`/icon.svg`, `/og.png`) |
 
 ### 사진은 어디에 담기나
 
@@ -233,6 +234,29 @@ https://house-hunt.<계정>.workers.dev/auth/signup?code=<가입코드>
 
 ---
 
+## 링크를 보냈을 때 뜨는 카드
+
+주소를 카톡이나 슬랙에 붙이면 제목과 그림이 붙은 카드로 펼쳐집니다. 로그인 화면,
+약관, 초대 링크까지 모든 공개 화면이 같은 카드를 씁니다.
+
+| 주소 | 내용 |
+|---|---|
+| `/og.png` | 카드 그림 1200×630 |
+| `/icon.svg` | 탭에 붙는 아이콘 |
+| `/apple-touch-icon.png` | 홈 화면에 얹을 때 쓰는 아이콘 180×180 |
+
+그림은 앱 안의 일러스트를 그대로 떼어 구운 것입니다. 앱 그림을 손봤다면
+
+```
+node tools/make-og.mjs
+```
+
+으로 다시 구워 `assets/`를 맞춰 주세요. 맥에서 `python3`·Pillow 와 인터넷이 필요합니다.
+
+카카오톡은 한 번 읽은 카드를 한동안 그대로 보여 줍니다. 바꾼 그림이 바로 안 보이면
+[카카오 디버거](https://developers.kakao.com/tool/debugger/sharing)에서 주소를 넣고
+캐시를 지우면 됩니다.
+
 ## 네이버부동산에서 가져오기
 
 매물 추가 화면 맨 위에 **네이버부동산에서 가져오기** 상자가 있습니다. 네이버부동산 매물 상세 화면을 전체 선택해 복사한 뒤 붙여넣으면 아래 칸들이 저절로 채워집니다. 붙여넣는 순간 바로 채우고, 무엇을 채웠는지 아래에 적어 줍니다.
@@ -437,6 +461,9 @@ node tools/test-parse.mjs
 | `migrations/002-photos-in-db.sql` | R2 없이 사진을 담을 자리를 만드는 스크립트 |
 | `migrations/003-google-and-age.sql` | 구글 로그인과 연령대를 받을 자리. 비밀번호 없는 계정을 위해 users 를 새로 만들어 옮깁니다 |
 | `migrations/004-stats.sql` | 연령대별 통계. 생성 컬럼과 `v_prop_stats` 뷰 |
+| `assets/og.png` | 주소를 공유했을 때 뜨는 카드 그림 (1200×630) |
+| `assets/icon-180.png` | 홈 화면에 얹을 때 쓰는 아이콘 |
+| `tools/make-og.mjs` | 위 두 그림을 앱 일러스트로 다시 굽는 스크립트 |
 | `tools/test-parse.mjs` | 네이버 붙여넣기 파서 회귀 시험 |
 | `tools/backup.sh` | 이 컴퓨터로 백업 받기 |
 | `.github/workflows/backup.yml` | 매일 자동 백업 |
