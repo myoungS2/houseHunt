@@ -128,7 +128,7 @@ table.grid th .ar{color:var(--accent);margin-left:3px}
 table.grid td{padding:10px 10px;border-bottom:1px solid var(--line);vertical-align:middle;white-space:nowrap}
 table.grid tbody tr:last-child td{border-bottom:0}
 table.grid tbody tr:hover td{background:var(--surface-2)}
-table.grid tr.dropped td{opacity:.45}
+table.grid tr.dropped td:not(.c-main),table.grid tr.dropped .mainCell{opacity:.45}
 table.grid tr.picked td{background:var(--sun-soft)}
 .c-main{position:sticky;left:0;z-index:1;background:var(--surface);border-right:1.5px solid var(--line);min-width:224px;max-width:272px}
 table.grid th.c-main{z-index:3;background:var(--surface-3)}
@@ -268,6 +268,8 @@ legend{font-size:11px;letter-spacing:.08em;color:var(--muted);font-weight:700;pa
 .urlRow{display:flex;gap:8px;align-items:stretch}
 .urlRow input{flex:1;min-width:0}
 .urlRow button{flex:none;white-space:nowrap}
+#callPhone{display:none}
+@media (pointer:coarse){#callPhone{display:inline-flex}}
 .unit{position:relative}
 .unit .u{position:absolute;right:12px;top:50%;transform:translateY(-50%);font-size:11.5px;color:var(--muted);pointer-events:none}
 .unit input{padding-right:46px}
@@ -2116,7 +2118,7 @@ function parseNaver(raw){
     const m=flat.match(/^(?:서울|부산|대구|인천|광주|대전|울산|세종|경기|강원|충북|충남|전북|전남|경북|경남|제주)[^\n]{2,40}$/m);
     if(m) addr=m[0];
   }
-  if(addr) out.address=addr.trim();
+  if(addr) out.address=addr.replace(/\s*지도\s*(?:로\s*)?보기\s*$/,'').trim();   // 네이버 '지도보기' 단추 글자가 붙어 온다
 
   /* 역 · 도보 */
   const st=flat.match(/([가-힣A-Za-z0-9]{1,10}역)[^\n]{0,6}도보\s*(\d+)\s*분/);
@@ -2161,10 +2163,22 @@ function nvApply(){
   const ta=$('#nvText'), out=$('#nvOut');
   if(!ta||!out) return;
   const r=parseNaver(ta.value);
+  /* 저장된 매물에 다시 붙이면 네이버 값으로 덮어쓴다. 이름과 메모는 내가 적은 것이라 둔다. */
+  const over = !!state.editing, KEEP=['name','pros','cons','memo'];
+  const els={};
+  Object.keys(r.vals).forEach(k=>{ const el=$('#sheetBody [name="'+k+'"]'); if(el) els[k]=el; });
+  const clash=Object.keys(els).filter(k=>{
+    const el=els[k], cur=el.value.trim();
+    return over && KEEP.indexOf(k)<0 && el.tagName!=='SELECT' && cur && cur!==String(r.vals[k]);
+  });
+  if(clash.length && !confirm('이미 적은 '+clash.length+'칸이 네이버 값으로 바뀝니다. 계속할까요?')){
+    out.innerHTML='<i>바꾸지 않았습니다</i>'; return;
+  }
   let filled=0, kept=0;
-  Object.keys(r.vals).forEach(k=>{
-    const el=$('#sheetBody [name="'+k+'"]'); if(!el) return;
-    if(el.tagName!=='SELECT' && el.value.trim()){ kept++; return; }
+  Object.keys(els).forEach(k=>{
+    const el=els[k];
+    if(el.tagName!=='SELECT' && el.value.trim() && (!over || KEEP.indexOf(k)>=0)){ kept++; return; }
+    if(el.value===String(r.vals[k])) return;
     el.value = r.vals[k];
     filled++;
   });
@@ -2172,14 +2186,14 @@ function nvApply(){
     const m=$('#sheetBody [name="memo"]');
     if(m && !m.value.trim()){ m.value=r.notes.join(' · '); filled++; }
   }
-  if(!filled && !kept){
+  if(!Object.keys(els).length && !r.notes.length){
     out.innerHTML='<i>읽을 만한 값을 못 찾았습니다. 매물 상세 화면을 통째로 복사했는지 확인해 주세요.</i>';
     return;
   }
   const head = r.more ? '매물 '+(r.more+1)+'건 중 맨 앞 한 건만 · ' : '';
   out.innerHTML = esc(head)+
-    (filled ? '<b>'+filled+'칸</b>을 채웠습니다'
-            : '<i>이미 다 적혀 있어 바뀐 것이 없습니다</i>')+
+    (filled ? '<b>'+filled+'칸</b>을 '+(over?'바꿨습니다':'채웠습니다')
+            : '<i>바뀐 것이 없습니다</i>')+
     (filled && kept ? ' <i>('+kept+'칸은 그대로 뒀습니다)</i>' : '');
 }
 
@@ -2187,7 +2201,7 @@ function formHTML(d){
   const nv='<details class="nvBox"'+(state.editing?'':' open')+'>'+
     '<summary>네이버부동산에서 가져오기</summary>'+
     '<div class="nvBody">'+
-    '<p>네이버부동산 매물 화면을 전체 선택해 복사한 뒤 아래에 붙여넣으세요. 빈 칸만 채우고 이미 적은 값은 건드리지 않습니다.</p>'+
+    '<p>네이버부동산 매물 화면을 전체 선택해 복사한 뒤 아래에 붙여넣으세요. '+(state.editing?'이름과 메모 말고는 네이버 값으로 바뀝니다.':'빈 칸만 채웁니다.')+'</p>'+
     '<textarea id="nvText" placeholder="여기에 붙여넣기 (⌘V)"></textarea>'+
     '<div class="nvRow"><button type="button" class="btn sm" id="nvFill">채우기</button>'+
     '<span class="nvOut" id="nvOut"></span></div></div></details>';
@@ -2234,6 +2248,9 @@ function field(f,d){
     ctrl = f.u ? '<div class="unit">'+inp+'<span class="u">'+f.u+'</span></div>' : inp;
     /* 링크를 넣어 두면 바로 띄워 볼 수 있게 단추를 곁들입니다. */
     if(f.t==='url') ctrl='<div class="urlRow">'+inp+'<button type="button" class="btn sm" id="openUrl">열기</button></div>';
+    /* 연락처는 복사하거나, 폰에서는 바로 걸 수 있게 합니다. */
+    if(f.t==='tel') ctrl='<div class="urlRow">'+inp+'<button type="button" class="btn sm" id="copyPhone">복사</button>'+
+      '<button type="button" class="btn sm" id="callPhone">전화</button></div>';
   }
   return '<div'+cls+'><label for="'+id+'">'+f.l+'</label>'+ctrl+'</div>';
 }
@@ -2489,6 +2506,15 @@ document.addEventListener('click', e=>{
       /* http 나 https 로 시작하지 않으면 붙여 줍니다. 이상한 스킴은 이 과정에서 무해해집니다. */
       const u = /^https?:\/\//i.test(raw) ? raw : ('https://'+raw.replace(/^\/+/,''));
       window.open(u,'hhListing','noopener,noreferrer,width=520,height=900');
+      break;
+    }
+    case 'copyPhone': case 'callPhone': {
+      const el=$('#f_agentPhone'), raw=((el&&el.value)||'').trim();
+      if(!raw){ toast('연락처를 먼저 넣어 주세요'); break; }
+      if(t.id==='callPhone'){ location.href='tel:'+raw.replace(/[^\d+]/g,''); break; }
+      if(navigator.clipboard&&navigator.clipboard.writeText){
+        navigator.clipboard.writeText(raw).then(()=>toast('연락처를 복사했습니다')).catch(()=>toast('복사가 막혀 있습니다'));
+      } else toast('이 브라우저에서는 복사를 쓸 수 없습니다');
       break;
     }
     case 'newBook': {
